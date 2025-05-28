@@ -35,6 +35,8 @@ passport.use(
           googleId: profile.id,
           email: profile.emails?.[0].value,
           name: profile.displayName,
+          profilePicture: profile.photos?.[0]?.value,
+          username: undefined,
         });
 
         done(null, newUser);

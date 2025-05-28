@@ -8,17 +8,27 @@ const router = Router();
 router.post("/register", (req: Request, res: Response) => {
   (async () => {
     try {
-      const { email, password, name } = req.body;
+      const { email, password, name, username } = req.body;
 
       const existing = await User.findOne({ email });
       if (existing)
         return res.status(400).json({ message: "User already exists" });
+
+      // Gravatar URL
+      const crypto = require("crypto");
+      const hash = crypto
+        .createHash("md5")
+        .update(email.trim().toLowerCase())
+        .digest("hex");
+      const gravatarUrl = `https://www.gravatar.com/avatar/${hash}?d=identicon`;
 
       const hashedPassword = await bcrypt.hash(password, 10);
       const newUser = await User.create({
         email,
         password: hashedPassword,
         name,
+        username,
+        profilePicture: gravatarUrl,
       });
 
       req.login(newUser, (err: any) => {
@@ -52,12 +62,18 @@ router.post(
           const { email, password, username, profilePicture, name } = req.body;
           let existing = await User.findOne({ email });
           if (!existing) {
+            const crypto = require("crypto");
+            const hash = crypto
+              .createHash("md5")
+              .update(email.trim().toLowerCase())
+              .digest("hex");
+            const gravatarUrl = `https://www.gravatar.com/avatar/${hash}?d=identicon`;
             const hashedPassword = await bcrypt.hash(password, 10);
             const newUser = await User.create({
               email,
               password: hashedPassword,
               username,
-              profilePicture,
+              profilePicture: gravatarUrl,
               name,
             });
             req.logIn(newUser, (err: any) => {
