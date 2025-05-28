@@ -10,6 +10,20 @@ router.post("/register", (req: Request, res: Response) => {
     try {
       const { email, password, name, username } = req.body;
 
+      // Username validation (no spaces, only allowed chars)
+      const usernameRegex = /^[A-Za-z0-9_-]+$/;
+      if (
+        username &&
+        (typeof username !== "string" ||
+          username.trim().length === 0 ||
+          !usernameRegex.test(username))
+      ) {
+        return res.status(400).json({
+          message:
+            "Invalid username. Only alphabets, numbers, underscores, and hyphens are allowed. No spaces.",
+        });
+      }
+
       const existing = await User.findOne({ email });
       if (existing)
         return res.status(400).json({ message: "User already exists" });
@@ -145,6 +159,49 @@ router.get("/me", (req: Request, res: Response) => {
   } else {
     res.status(401).json({ message: "Not authenticated" });
   }
+});
+
+router.post("/set-username", (req: Request, res: Response) => {
+  (async () => {
+    if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    const user = req.user as any;
+    if (user.username) {
+      return res.status(400).json({ message: "Username already set" });
+    }
+    const { username } = req.body;
+    const usernameRegex = /^[A-Za-z0-9_-]+$/;
+    if (
+      !username ||
+      typeof username !== "string" ||
+      username.trim().length === 0 ||
+      !usernameRegex.test(username)
+    ) {
+      return res.status(400).json({
+        message:
+          "Invalid username. Only alphabets, numbers, underscores, and hyphens are allowed. No spaces.",
+      });
+    }
+    const existing = await User.findOne({ username });
+    if (existing) {
+      return res.status(400).json({ message: "Username already taken" });
+    }
+    try {
+      user.username = username;
+      await user.save();
+      const safeUser = { ...(user.toObject?.() || user) };
+      if (safeUser.password) delete safeUser.password;
+      return res.json({
+        message: "Username set successfully",
+        user: safeUser,
+      });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ message: "Failed to set username", error: err });
+    }
+  })();
 });
 
 export default router;
