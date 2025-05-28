@@ -8,14 +8,18 @@ const router = Router();
 router.post("/register", (req: Request, res: Response) => {
   (async () => {
     try {
-      const { email, password } = req.body;
+      const { email, password, name } = req.body;
 
       const existing = await User.findOne({ email });
       if (existing)
         return res.status(400).json({ message: "User already exists" });
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = await User.create({ email, password: hashedPassword });
+      const newUser = await User.create({
+        email,
+        password: hashedPassword,
+        name,
+      });
 
       req.login(newUser, (err: any) => {
         if (err)
@@ -35,29 +39,66 @@ router.post("/register", (req: Request, res: Response) => {
   })();
 });
 
-router.post("/login", (req: Request, res: Response, next: NextFunction) => {
-  passport.authenticate("local", (err: any, user: any, info: any) => {
-    if (err) {
-      console.error("Authentication error:", err);
-      return res.status(500).json({ message: "Internal server error" });
-    }
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: info?.message || "Invalid credentials" });
-    }
-
-    req.logIn(user, (err: any) => {
+router.post(
+  "/login",
+  async (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate("local", async (err: any, user: any, info: any) => {
       if (err) {
-        console.error("Login error:", err);
-        return res.status(500).json({ message: "Login error" });
+        console.error("Authentication error:", err);
+        return res.status(500).json({ message: "Internal server error" });
       }
-      const safeUser = { ...user.toObject() };
-      delete safeUser.password;
-      return res.json({ message: "Logged in", user: safeUser });
-    });
-  })(req, res, next);
-});
+      if (!user) {
+        try {
+          const { email, password, username, profilePicture, name } = req.body;
+          let existing = await User.findOne({ email });
+          if (!existing) {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const newUser = await User.create({
+              email,
+              password: hashedPassword,
+              username,
+              profilePicture,
+              name,
+            });
+            req.logIn(newUser, (err: any) => {
+              if (err) {
+                console.error("Login error after upsert:", err);
+                return res
+                  .status(500)
+                  .json({ message: "Login error after upsert" });
+              }
+              const safeUser = { ...newUser.toObject() };
+              delete safeUser.password;
+              return res.json({
+                message: "User created and logged in",
+                user: safeUser,
+              });
+            });
+            return;
+          } else {
+            return res
+              .status(401)
+              .json({ message: info?.message || "Invalid credentials" });
+          }
+        } catch (upsertErr) {
+          return res
+            .status(500)
+            .json({ message: "Upsert failed", error: upsertErr });
+        }
+      } else {
+        req.logIn(user, (err: any) => {
+          if (err) {
+            console.error("Login error:", err);
+            return res.status(500).json({ message: "Login error" });
+          }
+          const safeUser = { ...user.toObject() };
+          delete safeUser.password;
+          return res.json({ message: "Logged in", user: safeUser });
+        });
+      }
+    })(req, res, next);
+  }
+);
 
 router.post("/logout", (req: Request, res: Response) => {
   req.logout((err: any) => {
