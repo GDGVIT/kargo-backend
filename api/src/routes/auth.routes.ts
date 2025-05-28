@@ -104,7 +104,9 @@ router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (_req: Request, res: Response) => {
-    res.redirect(process.env.FRONTEND_URL || "http://localhost:3000");
+    res.redirect(
+      (process.env.FRONTEND_URL || "http://localhost:3000") + "/profile"
+    );
   }
 );
 
