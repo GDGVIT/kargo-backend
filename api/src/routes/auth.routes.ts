@@ -10,7 +10,6 @@ router.post("/register", (req: Request, res: Response) => {
     try {
       const { email, password, name, username } = req.body;
 
-      // Username validation (no spaces, only allowed chars)
       const usernameRegex = /^[A-Za-z0-9_-]+$/;
       if (
         username &&
@@ -72,60 +71,18 @@ router.post(
         return res.status(500).json({ message: "Internal server error" });
       }
       if (!user) {
-        try {
-          const { email, password, username, profilePicture, name } = req.body;
-          let existing = await User.findOne({ email });
-          if (!existing) {
-            const crypto = require("crypto");
-            const hash = crypto
-              .createHash("md5")
-              .update(email.trim().toLowerCase())
-              .digest("hex");
-            const gravatarUrl = `https://www.gravatar.com/avatar/${hash}?d=identicon`;
-            const hashedPassword = await bcrypt.hash(password, 10);
-            const newUser = await User.create({
-              email,
-              password: hashedPassword,
-              username,
-              profilePicture: gravatarUrl,
-              name,
-            });
-            req.logIn(newUser, (err: any) => {
-              if (err) {
-                console.error("Login error after upsert:", err);
-                return res
-                  .status(500)
-                  .json({ message: "Login error after upsert" });
-              }
-              const safeUser = { ...newUser.toObject() };
-              delete safeUser.password;
-              return res.json({
-                message: "User created and logged in",
-                user: safeUser,
-              });
-            });
-            return;
-          } else {
-            return res
-              .status(401)
-              .json({ message: info?.message || "Invalid credentials" });
-          }
-        } catch (upsertErr) {
-          return res
-            .status(500)
-            .json({ message: "Upsert failed", error: upsertErr });
-        }
-      } else {
-        req.logIn(user, (err: any) => {
-          if (err) {
-            console.error("Login error:", err);
-            return res.status(500).json({ message: "Login error" });
-          }
-          const safeUser = { ...user.toObject() };
-          delete safeUser.password;
-          return res.json({ message: "Logged in", user: safeUser });
-        });
+        return res
+          .status(401)
+          .json({ message: info?.message || "Invalid credentials" });
       }
+      req.logIn(user, (err: any) => {
+        if (err) {
+          return res.status(500).json({ message: "Login failed" });
+        }
+        const userObj = { ...user.toObject?.() };
+        if (userObj.password) delete userObj.password;
+        res.json({ user: userObj });
+      });
     })(req, res, next);
   }
 );
