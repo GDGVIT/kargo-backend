@@ -6,6 +6,7 @@ import session from "express-session";
 import passport from "passport";
 import cookieParser from "cookie-parser";
 import "./auth/passport";
+import "./auth/local.strategy";
 import authRoutes from "./routes/auth.routes";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });

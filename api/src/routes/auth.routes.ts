@@ -22,7 +22,12 @@ router.post("/register", (req: Request, res: Response) => {
           return res
             .status(500)
             .json({ message: "Login after register failed" });
-        return res.json({ message: "Registered and logged in", user: newUser });
+        const safeUser = { ...newUser.toObject() };
+        delete safeUser.password;
+        return res.json({
+          message: "Registered and logged in",
+          user: safeUser,
+        });
       });
     } catch (err) {
       res.status(500).json({ message: "Registration failed", error: err });
@@ -32,12 +37,24 @@ router.post("/register", (req: Request, res: Response) => {
 
 router.post("/login", (req: Request, res: Response, next: NextFunction) => {
   passport.authenticate("local", (err: any, user: any, info: any) => {
-    if (err || !user)
-      return res.status(401).json({ message: info?.message || "Login failed" });
+    if (err) {
+      console.error("Authentication error:", err);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+    if (!user) {
+      return res
+        .status(401)
+        .json({ message: info?.message || "Invalid credentials" });
+    }
 
     req.logIn(user, (err: any) => {
-      if (err) return res.status(500).json({ message: "Login error" });
-      return res.json({ message: "Logged in", user });
+      if (err) {
+        console.error("Login error:", err);
+        return res.status(500).json({ message: "Login error" });
+      }
+      const safeUser = { ...user.toObject() };
+      delete safeUser.password;
+      return res.json({ message: "Logged in", user: safeUser });
     });
   })(req, res, next);
 });
@@ -65,7 +82,7 @@ router.get(
 
 router.get("/me", (req: Request, res: Response) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
-    const user = { ...req.user } as any;
+    const user = { ...(req.user as any) };
     if (user.password) delete user.password;
     res.json({ user });
   } else {
