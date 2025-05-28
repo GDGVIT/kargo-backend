@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["Buildx", "gdgvit", "kargo", "libc", "NEXTAUTH"]
+  "cSpell.words": ["Buildx", "gdgvit", "kargo", "libc", "NEXTAUTH"],
+  "colorWheel.settings.workspaceColor": "hsl(176,58%,68%)"
 }

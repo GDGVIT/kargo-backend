@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import "./auth/passport";
 import "./auth/local.strategy";
 import authRoutes from "./routes/auth.routes";
+import githubRoutes from "./routes/github.routes";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
@@ -47,5 +48,6 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/github", githubRoutes);
 
 export default app;
