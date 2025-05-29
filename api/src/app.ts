@@ -20,6 +20,7 @@ app.use(
     credentials: true,
   })
 );
+console.log("CORS enabled for:", process.env.FRONTEND_URL);
 
 app.use(express.json());
 app.use(cookieParser());
