@@ -21,13 +21,11 @@ if (!GITHUB_APP_ID || !GITHUB_APP_SLUG || !GITHUB_PRIVATE_KEY) {
 
 const privateKey = GITHUB_PRIVATE_KEY.replace(/\\n/g, "\n");
 
-// Install URL redirect
 router.get("/install", (_req: Request, res: Response) => {
   const installUrl = `https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`;
   return res.redirect(installUrl);
 });
 
-// Updated: GitHub callback to save installationId for logged-in user (POST)
 router.post("/callback", async (req: Request, res: Response) => {
   const installationId = req.body.installation_id as string;
   const user = req.user;
@@ -54,7 +52,6 @@ router.post("/callback", async (req: Request, res: Response) => {
   }
 });
 
-// Fetch GitHub repositories using installation access token
 router.get("/repos", async (req: Request, res: Response) => {
   try {
     let installationId = req.query.installation_id as string | undefined;
@@ -125,7 +122,6 @@ router.get("/repos", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/github/installation_id
 router.get("/installation_id", async (req: Request, res: Response) => {
   if (!req.user) {
     res.status(401).json({ error: "Not authenticated" });
@@ -143,6 +139,36 @@ router.get("/installation_id", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Error fetching installation ID:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/installation-id", async (req: Request, res: Response) => {
+  const { installation_id } = req.body;
+
+  if (!req.user) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  if (!installation_id) {
+    res.status(400).json({ error: "Missing installation ID" });
+    return;
+  }
+
+  try {
+    const user = await User.findById((req.user as any)._id);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    user.githubInstallationId = installation_id;
+    await user.save();
+
+    res.status(200).json({ message: "Installation ID saved." });
+  } catch (err) {
+    console.error("Error saving installation ID:", err);
+    res.status(500).json({ error: "Failed to save installation ID." });
   }
 });
 
