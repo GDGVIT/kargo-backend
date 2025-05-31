@@ -4,7 +4,6 @@ import User from "../models/user.model";
 import dotenv from "dotenv";
 import path from "path";
 
-// Load environment variables early
 const envPath = path.resolve(__dirname, "../../../.env");
 dotenv.config({ path: envPath });
 
