@@ -1,26 +1,18 @@
-import path from "path";
-import dotenv from "dotenv";
-
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-
-import mongoose from "mongoose";
 import app from "./app";
+import { connectDatabase } from "./config/database";
+import { PORT } from "./config";
 
-const PORT = 5000;
-
-async function startServer() {
+const startServer = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI!);
-    console.log("MongoDB connected");
-
+    await connectDatabase();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`API URL: http://localhost:${PORT}`);
     });
   } catch (err) {
-    console.error(err);
+    console.error("Failed to start server:", err);
     process.exit(1);
   }
-}
+};
 
 startServer();

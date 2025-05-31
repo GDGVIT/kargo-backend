@@ -10,7 +10,7 @@ export interface IUser extends Document {
   githubInstallationId?: string;
 }
 
-const userSchema = new Schema<IUser>(
+const UserSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true },
     password: { type: String }, // Only for email/password
@@ -23,4 +23,4 @@ const userSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-export default mongoose.model<IUser>("User", userSchema);
+export default mongoose.model<IUser>("User", UserSchema);
