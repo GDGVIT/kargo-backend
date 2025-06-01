@@ -9,8 +9,6 @@ const {
   GITHUB_APP_ID,
   GITHUB_APP_SLUG,
   GITHUB_PRIVATE_KEY,
-  GITHUB_CLIENT_ID,
-  GITHUB_CLIENT_SECRET,
 } = process.env;
 
 if (!GITHUB_APP_ID || !GITHUB_APP_SLUG || !GITHUB_PRIVATE_KEY) {
@@ -21,30 +19,40 @@ if (!GITHUB_APP_ID || !GITHUB_APP_SLUG || !GITHUB_PRIVATE_KEY) {
 
 const privateKey = GITHUB_PRIVATE_KEY.replace(/\\n/g, "\n");
 
-router.get("/install", (_req: Request, res: Response) => {
-  const installUrl = `https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`;
-  return res.redirect(installUrl);
+async function getUserFromSession(req: Request) {
+  if (!req.user) return null;
+  return User.findById((req.user as any)._id);
+}
+
+function createGitHubJwt() {
+  const now = Math.floor(Date.now() / 1000);
+  return jwt.sign(
+    {
+      iat: now - 60,
+      exp: now + 540,
+      iss: GITHUB_APP_ID,
+    },
+    privateKey,
+    { algorithm: "RS256" }
+  );
+}
+
+router.get("/install", (_req, res) => {
+  res.redirect(`https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`);
 });
 
+// Route: Save installation ID to user
 router.post("/callback", async (req: Request, res: Response) => {
   const installationId = req.body.installation_id as string;
-  const user = req.user;
+  const user = await getUserFromSession(req);
 
   if (!user || !installationId) {
-    res.status(400).send("Missing user session or installation ID.");
-    return;
+    return res.status(400).send("Missing user session or installation ID.");
   }
 
   try {
-    const dbUser = await User.findById((user as any)._id);
-    if (!dbUser) {
-      res.status(404).send("User not found");
-      return;
-    }
-
-    dbUser.githubInstallationId = installationId;
-    await dbUser.save();
-
+    user.githubInstallationId = installationId;
+    await user.save();
     res.status(200).json({ message: "GitHub installation saved." });
   } catch (err) {
     console.error("Error saving installation ID:", err);
@@ -52,37 +60,24 @@ router.post("/callback", async (req: Request, res: Response) => {
   }
 });
 
+// Route: Get repositories for installation
 router.get("/repos", async (req: Request, res: Response) => {
   try {
     let installationId = req.query.installation_id as string | undefined;
 
     if (!installationId) {
-      if (!req.user) {
-        res.status(401).json({ error: "Not authenticated" });
-        return;
-      }
-
-      const user = await User.findById((req.user as any)._id);
+      const user = await getUserFromSession(req);
       installationId = user?.githubInstallationId;
-
       if (!installationId) {
-        res.status(400).json({ error: "GitHub not connected for user" });
-        return;
+        return res.status(400).json({ error: "GitHub not connected for user" });
       }
     }
 
     if (typeof installationId !== "string") {
-      res.status(400).json({ error: "Invalid installation ID" });
-      return;
+      return res.status(400).json({ error: "Invalid installation ID" });
     }
 
-    const now = Math.floor(Date.now() / 1000);
-    const payload = {
-      iat: now - 60,
-      exp: now + 540,
-      iss: GITHUB_APP_ID,
-    };
-    const jwtToken = jwt.sign(payload, privateKey, { algorithm: "RS256" });
+    const jwtToken = createGitHubJwt();
 
     const tokenResponse = await axios.post(
       `https://api.github.com/app/installations/${installationId}/access_tokens`,
@@ -109,10 +104,7 @@ router.get("/repos", async (req: Request, res: Response) => {
 
     res.json(reposResponse.data);
   } catch (error: any) {
-    console.error(
-      "GitHub /repos error:",
-      error.response?.data || error.message
-    );
+    console.error("GitHub /repos error:", error.response?.data || error.message);
     res.status(500).json({
       error:
         error.response?.data?.message ||
@@ -122,49 +114,30 @@ router.get("/repos", async (req: Request, res: Response) => {
   }
 });
 
+// Route: Get user's installation ID
 router.get("/installation_id", async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ error: "Not authenticated" });
-    return;
+  const user = await getUserFromSession(req);
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
   }
-
-  try {
-    const user = await User.findById((req.user as any)._id);
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-
-    res.json({ installation_id: user.githubInstallationId || null });
-  } catch (err) {
-    console.error("Error fetching installation ID:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
+  res.json({ installation_id: user.githubInstallationId || null });
 });
 
+// Route: Save installation ID to user
 router.post("/installation-id", async (req: Request, res: Response) => {
   const { installation_id } = req.body;
+  const user = await getUserFromSession(req);
 
-  if (!req.user) {
-    res.status(401).json({ error: "Not authenticated" });
-    return;
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
   }
-
   if (!installation_id) {
-    res.status(400).json({ error: "Missing installation ID" });
-    return;
+    return res.status(400).json({ error: "Missing installation ID" });
   }
 
   try {
-    const user = await User.findById((req.user as any)._id);
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-
     user.githubInstallationId = installation_id;
     await user.save();
-
     res.status(200).json({ message: "Installation ID saved." });
   } catch (err) {
     console.error("Error saving installation ID:", err);
