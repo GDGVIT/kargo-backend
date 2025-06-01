@@ -2,10 +2,8 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/user.model";
 import dotenv from "dotenv";
-import path from "path";
 
-const envPath = path.resolve(__dirname, "../../../.env");
-dotenv.config({ path: envPath });
+dotenv.config();
 
 passport.serializeUser((user: any, done) => {
   done(null, user.id);
@@ -20,18 +18,11 @@ passport.deserializeUser(async (id: string, done) => {
   }
 });
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-
-if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-  throw new Error("Missing Google OAuth environment variables.");
-}
-
 passport.use(
   new GoogleStrategy(
     {
-      clientID: GOOGLE_CLIENT_ID,
-      clientSecret: GOOGLE_CLIENT_SECRET,
+      clientID: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       callbackURL: "/api/auth/google/callback",
     },
     async (_accessToken, _refreshToken, profile, done) => {

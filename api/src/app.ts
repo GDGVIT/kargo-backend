@@ -1,41 +1,54 @@
+import path from "path";
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser";
+import session from "express-session";
 import passport from "passport";
-import { FRONTEND_URL } from "./config";
-import { sessionMiddleware } from "./config/session";
-import "./config/passport";
+import cookieParser from "cookie-parser";
+import "./auth/passport";
+import "./auth/local.strategy";
 import authRoutes from "./routes/auth.routes";
 import githubRoutes from "./routes/github.routes";
-import { errorHandler } from "./middlewares/errorHandler";
+
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const app = express();
 
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", FRONTEND_URL);
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.sendStatus(200);
-});
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+  })
+);
+console.log("CORS enabled for:", process.env.FRONTEND_URL);
 
-app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
-app.use(sessionMiddleware);
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET!,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+    },
+  })
+);
+
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use("/api/auth", authRoutes);
-app.use("/api/github", githubRoutes);
-
-app.get("/", (_req, res) => {
-  res.json({ message: "API is running", uptime: Math.round(process.uptime()) });
+app.get("/", (req, res) => {
+  res.json({
+    message: "API is running",
+    uptime: Math.round(process.uptime()),
+  });
 });
 
-app.use(errorHandler);
+app.use("/api/auth", authRoutes);
+app.use("/api/github", githubRoutes);
 
 export default app;

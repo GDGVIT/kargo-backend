@@ -21,13 +21,11 @@ if (!GITHUB_APP_ID || !GITHUB_APP_SLUG || !GITHUB_PRIVATE_KEY) {
 
 const privateKey = GITHUB_PRIVATE_KEY.replace(/\\n/g, "\n");
 
-// Redirect user to GitHub App installation page
 router.get("/install", (_req: Request, res: Response) => {
   const installUrl = `https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`;
   return res.redirect(installUrl);
 });
 
-// Save GitHub installation ID to user
 router.post("/callback", async (req: Request, res: Response) => {
   const installationId = req.body.installation_id as string;
   const user = req.user;
@@ -54,7 +52,6 @@ router.post("/callback", async (req: Request, res: Response) => {
   }
 });
 
-// Get repositories for a GitHub installation
 router.get("/repos", async (req: Request, res: Response) => {
   try {
     let installationId = req.query.installation_id as string | undefined;
@@ -125,7 +122,6 @@ router.get("/repos", async (req: Request, res: Response) => {
   }
 });
 
-// Get GitHub installation ID for the current user
 router.get("/installation_id", async (req: Request, res: Response) => {
   if (!req.user) {
     res.status(401).json({ error: "Not authenticated" });
@@ -146,7 +142,6 @@ router.get("/installation_id", async (req: Request, res: Response) => {
   }
 });
 
-// Save GitHub installation ID for the current user
 router.post("/installation-id", async (req: Request, res: Response) => {
   const { installation_id } = req.body;
 
