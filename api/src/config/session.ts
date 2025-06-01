@@ -3,7 +3,10 @@ import MongoStore from "connect-mongo";
 import { SESSION_SECRET, NODE_ENV, MONGO_URI } from "./index";
 
 if (!SESSION_SECRET) {
-  throw new Error("SESSION_SECRET is not defined");
+  const err = new Error("Session secret is missing. Please contact support.");
+  (err as any).status = 500;
+  (err as any).isCustom = true;
+  throw err;
 }
 
 export const sessionMiddleware = session({

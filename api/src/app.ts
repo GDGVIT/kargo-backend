@@ -7,6 +7,7 @@ import { sessionMiddleware } from "./config/session";
 import "./config/passport";
 import authRoutes from "./routes/auth.routes";
 import githubRoutes from "./routes/github.routes";
+import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
 
@@ -23,5 +24,7 @@ app.use("/api/github", githubRoutes);
 app.get("/", (_req, res) => {
   res.json({ message: "API is running", uptime: Math.round(process.uptime()) });
 });
+
+app.use(errorHandler);
 
 export default app;
