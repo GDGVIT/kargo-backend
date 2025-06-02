@@ -11,6 +11,14 @@ passport.use(
         const user = await User.findOne({ email });
         if (!user) return done(null, false, { message: "Incorrect email" });
 
+        // Only allow local login if password is set
+        if (!user.password) {
+          return done(null, false, {
+            message:
+              "Please login with OAuth and set a password to enable email login.",
+          });
+        }
+
         const valid = await bcrypt.compare(password, user.password || "");
         if (!valid) return done(null, false, { message: "Incorrect password" });
 
