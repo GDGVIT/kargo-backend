@@ -24,8 +24,8 @@ function sanitizeUser(user: any) {
 }
 
 // Register
-router.post("/register", async (req: Request, res: Response) => {
-  try {
+router.post("/register", (req: Request, res: Response, next: NextFunction) => {
+  (async () => {
     const { email, password, name, username } = req.body;
 
     if (username && !isValidUsername(username)) {
@@ -65,9 +65,7 @@ router.post("/register", async (req: Request, res: Response) => {
         user: sanitizeUser(newUser),
       });
     });
-  } catch (err) {
-    res.status(500).json({ message: "Registration failed", error: err });
-  }
+  })().catch(next);
 });
 
 // Login
@@ -129,37 +127,39 @@ router.get("/me", (req: Request, res: Response) => {
 });
 
 // Set username
-router.post("/set-username", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) {
-    return res.status(401).json({ message: "Not authenticated" });
-  }
-  const user = req.user as any;
-  if (user.username) {
-    return res.status(400).json({ message: "Username already set" });
-  }
-  const { username } = req.body;
-  if (!isValidUsername(username)) {
-    return res.status(400).json({
-      message:
-        "Invalid username. Only alphabets, numbers, underscores, and hyphens are allowed. No spaces.",
-    });
-  }
-  const existing = await User.findOne({ username });
-  if (existing) {
-    return res.status(400).json({ message: "Username already taken" });
-  }
-  try {
-    user.username = username;
-    await user.save();
-    return res.json({
-      message: "Username set successfully",
-      user: sanitizeUser(user),
-    });
-  } catch (err) {
-    return res
-      .status(500)
-      .json({ message: "Failed to set username", error: err });
-  }
+router.post("/set-username", (req: Request, res: Response, next: NextFunction) => {
+  (async () => {
+    if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    const user = req.user as any;
+    if (user.username) {
+      return res.status(400).json({ message: "Username already set" });
+    }
+    const { username } = req.body;
+    if (!isValidUsername(username)) {
+      return res.status(400).json({
+        message:
+          "Invalid username. Only alphabets, numbers, underscores, and hyphens are allowed. No spaces.",
+      });
+    }
+    const existing = await User.findOne({ username });
+    if (existing) {
+      return res.status(400).json({ message: "Username already taken" });
+    }
+    try {
+      user.username = username;
+      await user.save();
+      return res.json({
+        message: "Username set successfully",
+        user: sanitizeUser(user),
+      });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ message: "Failed to set username", error: err });
+    }
+  })().catch(next);
 });
 
 export default router;
