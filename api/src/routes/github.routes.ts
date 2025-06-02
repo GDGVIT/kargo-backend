@@ -48,8 +48,12 @@ router.post("/callback", (req: Request, res: Response) => {
     }
 
     try {
-      user.githubInstallationId = installationId;
-      await user.save();
+      // Append only if not already present
+      if (!user.githubInstallationId?.includes(installationId)) {
+        user.githubInstallationId = user.githubInstallationId || [];
+        user.githubInstallationId.push(installationId);
+        await user.save();
+      }
       res.status(200).json({ message: "GitHub installation saved." });
     } catch (err) {
       console.error("Error saving installation ID:", err);
@@ -62,48 +66,62 @@ router.post("/callback", (req: Request, res: Response) => {
 router.get("/repos", (req: Request, res: Response) => {
   (async () => {
     try {
-      let installationId = req.query.installation_id as string | undefined;
+      let installationIds: string[] = [];
 
-      if (!installationId) {
+      if (req.query.installation_ids) {
+        installationIds = (req.query.installation_ids as string).split(",");
+      } else {
         const user = await getUserFromSession(req);
-        installationId = user?.githubInstallationId;
-        if (!installationId) {
+        if (
+          !user?.githubInstallationId ||
+          user.githubInstallationId.length === 0
+        ) {
           return res
             .status(400)
             .json({ error: "GitHub not connected for user" });
         }
+        installationIds = user.githubInstallationId;
       }
 
-      if (typeof installationId !== "string") {
-        return res.status(400).json({ error: "Invalid installation ID" });
+      if (!Array.isArray(installationIds) || installationIds.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "Invalid or missing installation IDs" });
       }
 
       const jwtToken = createGitHubJwt();
 
-      const tokenResponse = await axios.post(
-        `https://api.github.com/app/installations/${installationId}/access_tokens`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${jwtToken}`,
-            Accept: "application/vnd.github+json",
-          },
-        }
-      );
+      let allRepos: any[] = [];
 
-      const accessToken = tokenResponse.data.token;
+      // Fetch repos for each installation ID sequentially or in parallel
+      for (const installationId of installationIds) {
+        const tokenResponse = await axios.post(
+          `https://api.github.com/app/installations/${installationId}/access_tokens`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${jwtToken}`,
+              Accept: "application/vnd.github+json",
+            },
+          }
+        );
 
-      const reposResponse = await axios.get(
-        "https://api.github.com/installation/repositories",
-        {
-          headers: {
-            Authorization: `token ${accessToken}`,
-            Accept: "application/vnd.github+json",
-          },
-        }
-      );
+        const accessToken = tokenResponse.data.token;
 
-      res.json(reposResponse.data);
+        const reposResponse = await axios.get(
+          "https://api.github.com/installation/repositories",
+          {
+            headers: {
+              Authorization: `token ${accessToken}`,
+              Accept: "application/vnd.github+json",
+            },
+          }
+        );
+
+        allRepos = allRepos.concat(reposResponse.data.repositories || []);
+      }
+
+      res.json({ repositories: allRepos });
     } catch (error: any) {
       console.error(
         "GitHub /repos error:",
@@ -126,7 +144,7 @@ router.get("/installation_id", (req: Request, res: Response) => {
     if (!user) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    res.json({ installation_id: user.githubInstallationId || null });
+    res.json({ installation_ids: user.githubInstallationId || [] });
   })();
 });
 
@@ -144,8 +162,11 @@ router.post("/installation-id", (req: Request, res: Response) => {
     }
 
     try {
-      user.githubInstallationId = installation_id;
-      await user.save();
+      if (!user.githubInstallationId?.includes(installation_id)) {
+        user.githubInstallationId = user.githubInstallationId || [];
+        user.githubInstallationId.push(installation_id);
+        await user.save();
+      }
       res.status(200).json({ message: "Installation ID saved." });
     } catch (err) {
       console.error("Error saving installation ID:", err);
