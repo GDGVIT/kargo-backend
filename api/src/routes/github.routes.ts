@@ -37,7 +37,7 @@ router.get("/install", (_req, res) => {
   res.redirect(`https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`);
 });
 
-// Route: Save installation ID to user
+// Save installation ID to user
 router.post("/callback", (req: Request, res: Response) => {
   (async () => {
     const installationId = req.body.installation_id as string;
@@ -48,7 +48,6 @@ router.post("/callback", (req: Request, res: Response) => {
     }
 
     try {
-      // Append only if not already present
       if (!user.githubInstallationId?.includes(installationId)) {
         user.githubInstallationId = user.githubInstallationId || [];
         user.githubInstallationId.push(installationId);
@@ -62,7 +61,7 @@ router.post("/callback", (req: Request, res: Response) => {
   })();
 });
 
-// Route: Get repositories for installation
+// Get repositories for installation(s) with extended details
 router.get("/repos", (req: Request, res: Response) => {
   (async () => {
     try {
@@ -90,11 +89,10 @@ router.get("/repos", (req: Request, res: Response) => {
       }
 
       const jwtToken = createGitHubJwt();
-
       let allRepos: any[] = [];
 
-      // Fetch repos for each installation ID sequentially or in parallel
       for (const installationId of installationIds) {
+        // Get access token for the installation
         const tokenResponse = await axios.post(
           `https://api.github.com/app/installations/${installationId}/access_tokens`,
           {},
@@ -108,6 +106,7 @@ router.get("/repos", (req: Request, res: Response) => {
 
         const accessToken = tokenResponse.data.token;
 
+        // Get repositories for this installation
         const reposResponse = await axios.get(
           "https://api.github.com/installation/repositories",
           {
@@ -118,7 +117,29 @@ router.get("/repos", (req: Request, res: Response) => {
           }
         );
 
-        allRepos = allRepos.concat(reposResponse.data.repositories || []);
+        // Extract and extend repo info
+        const repos = reposResponse.data.repositories || [];
+        const extendedRepos = repos.map((repo: any) => ({
+          id: repo.id,
+          name: repo.name,
+          full_name: repo.full_name,
+          html_url: repo.html_url,
+          description: repo.description,
+          private: repo.private,
+          fork: repo.fork,
+          owner_login: repo.owner?.login,
+          forks_count: repo.forks_count,
+          stargazers_count: repo.stargazers_count,
+          watchers_count: repo.watchers_count,
+          language: repo.language,
+          created_at: repo.created_at,
+          updated_at: repo.updated_at,
+          pushed_at: repo.pushed_at,
+          license: repo.license ? repo.license.spdx_id : null,
+          open_issues_count: repo.open_issues_count,
+        }));
+
+        allRepos = allRepos.concat(extendedRepos);
       }
 
       res.json({ repositories: allRepos });
@@ -137,7 +158,7 @@ router.get("/repos", (req: Request, res: Response) => {
   })();
 });
 
-// Route: Get user's installation ID
+// Get user's installation IDs
 router.get("/installation_id", (req: Request, res: Response) => {
   (async () => {
     const user = await getUserFromSession(req);
@@ -148,7 +169,7 @@ router.get("/installation_id", (req: Request, res: Response) => {
   })();
 });
 
-// Route: Save installation ID to user
+// Save installation ID to user
 router.post("/installation-id", (req: Request, res: Response) => {
   (async () => {
     const { installation_id } = req.body;
