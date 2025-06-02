@@ -83,7 +83,6 @@ export const githubRepos = async (req: Request, res: Response) => {
     let allRepos: any[] = [];
 
     for (const installationId of installationIds) {
-      // Get access token for the installation
       const tokenResponse = await axios.post(
         `https://api.github.com/app/installations/${installationId}/access_tokens`,
         {},
@@ -97,7 +96,6 @@ export const githubRepos = async (req: Request, res: Response) => {
 
       const accessToken = tokenResponse.data.token;
 
-      // Get repositories for this installation
       const reposResponse = await axios.get(
         "https://api.github.com/installation/repositories",
         {
@@ -108,7 +106,6 @@ export const githubRepos = async (req: Request, res: Response) => {
         }
       );
 
-      // Extract and extend repo info
       const repos = reposResponse.data.repositories || [];
       const extendedRepos = repos.map((repo: any) => ({
         id: repo.id,

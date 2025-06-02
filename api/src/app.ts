@@ -10,12 +10,10 @@ import "./auth/local.strategy";
 import authRoutes from "./routes/auth.routes";
 import githubRoutes from "./routes/github.routes";
 
-// Load environment variables
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const app = express();
 
-// Middleware: CORS
 const frontendUrl = process.env.FRONTEND_URL;
 app.use(
   cors({
@@ -25,11 +23,9 @@ app.use(
 );
 console.log("CORS enabled for:", frontendUrl);
 
-// Middleware: JSON and cookies
 app.use(express.json());
 app.use(cookieParser());
 
-// Middleware: Session
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
   throw new Error("SESSION_SECRET is not set in environment variables.");
@@ -48,11 +44,9 @@ app.use(
   })
 );
 
-// Middleware: Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Health check route
 app.get("/", (_req: Request, res: Response) => {
   res.json({
     message: "API is running",
@@ -60,7 +54,6 @@ app.get("/", (_req: Request, res: Response) => {
   });
 });
 
-// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/github", githubRoutes);
 
