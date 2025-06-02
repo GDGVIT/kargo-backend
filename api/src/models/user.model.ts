@@ -7,7 +7,7 @@ export interface IUser extends Document {
   username?: string;
   profilePicture?: string;
   name?: string;
-  githubInstallationId?: string;
+  githubInstallationId?: string[];
 }
 
 const userSchema = new Schema<IUser>(
@@ -18,7 +18,7 @@ const userSchema = new Schema<IUser>(
     username: { type: String },
     profilePicture: { type: String },
     name: { type: String },
-    githubInstallationId: { type: String },
+    githubInstallationId: { type: [String], default: [] },
   },
   { timestamps: true }
 );
