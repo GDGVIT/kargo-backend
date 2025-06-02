@@ -9,6 +9,7 @@ import {
   googleCallback,
   getMe,
   setUsername,
+  verifyEmail,
 } from "../controllers/auth.controller";
 
 const router = Router();
@@ -36,5 +37,8 @@ router.post("/set-username", (req, res, next) => {
 });
 router.get("/github", githubAuth);
 router.get("/github/callback", ...githubCallback);
+router.get("/verify-email", (req, res, next) => {
+  Promise.resolve(verifyEmail(req, res)).catch(next);
+});
 
 export default router;

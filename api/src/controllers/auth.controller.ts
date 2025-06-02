@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import passport from "passport";
 import User from "../models/user.model";
 import crypto from "crypto";
+import { sendVerificationEmail } from "../utils/mailer";
 
 function isValidUsername(username: string): boolean {
   const usernameRegex = /^[A-Za-z0-9_-]+$/;
@@ -41,20 +42,24 @@ export const register = async (
       .digest("hex");
     const gravatarUrl = `https://www.gravatar.com/avatar/${hash}?d=identicon`;
     const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = crypto.randomBytes(32).toString("hex");
     const newUser = await User.create({
       email,
       password: hashedPassword,
       name,
       username,
       profilePicture: gravatarUrl,
+      isVerified: false,
+      verificationToken,
     });
-    req.login(newUser, (err: any) => {
-      if (err)
-        return res.status(500).json({ message: "Login after register failed" });
-      return res.json({
-        message: "Registered and logged in",
-        user: sanitizeUser(newUser),
-      });
+    await sendVerificationEmail({
+      to: email,
+      token: verificationToken,
+      domain: process.env.CUSTOM_DOMAIN || "http://localhost:3000",
+    });
+    return res.json({
+      message:
+        "Registered successfully. Please check your email to verify your account.",
     });
   } catch (err) {
     next(err);
@@ -145,4 +150,21 @@ export const setUsername = async (
       .status(500)
       .json({ message: "Failed to set username", error: err });
   }
+};
+
+export const verifyEmail = async (req: Request, res: Response) => {
+  const { token } = req.query;
+  if (!token || typeof token !== "string") {
+    return res.status(400).json({ message: "Invalid or missing token" });
+  }
+  const user = await User.findOne({ verificationToken: token });
+  if (!user) {
+    return res.status(400).json({ message: "Invalid or expired token" });
+  }
+  user.isVerified = true;
+  user.verificationToken = undefined;
+  await user.save();
+  return res.json({
+    message: "Email verified successfully. You can now log in.",
+  });
 };

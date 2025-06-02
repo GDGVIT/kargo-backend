@@ -13,6 +13,8 @@ export interface IUser extends Document {
   profilePicture?: string;
   name?: string;
   githubInstallationId?: string[];
+  isVerified?: boolean;
+  verificationToken?: string;
 }
 
 const oauthSchema = new Schema<IOAuth>(
@@ -32,6 +34,8 @@ const userSchema = new Schema<IUser>(
     profilePicture: { type: String },
     name: { type: String },
     githubInstallationId: { type: [String], default: [] },
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String },
   },
   { timestamps: true }
 );
