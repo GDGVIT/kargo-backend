@@ -17,6 +17,11 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const app = express();
 const frontendUrl = process.env.FRONTEND_URL;
+const production = process.env.NODE_ENV === "production";
+
+if (production) {
+  app.set("trust proxy", 1);
+}
 
 app.use(
   cors({
@@ -36,13 +41,15 @@ if (!sessionSecret) {
 
 app.use(
   session({
+    name: "kargo.sid",
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: production, // set true only in production (HTTPS)
+      sameSite: "none", // allow cross-origin cookies
+      domain: production ? ".kargo.upayan.dev" : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },
   })
