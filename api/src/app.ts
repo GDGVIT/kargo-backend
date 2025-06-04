@@ -6,7 +6,6 @@ import session from "express-session";
 import passport from "passport";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
-import rateLimit from "express-rate-limit";
 
 import "./auth/passport";
 import "./auth/local.strategy";
@@ -29,12 +28,6 @@ app.use(
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: "Too many requests from this IP, please try again later.",
-});
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
@@ -65,7 +58,7 @@ app.get("/", (_req: Request, res: Response) => {
   });
 });
 
-app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/github", githubRoutes);
 
 export default app;
