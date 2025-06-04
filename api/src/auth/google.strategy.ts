@@ -12,23 +12,19 @@ export function setupGoogleStrategy() {
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {
-          // Find user by Google ID in oauth subfield
           let user = await User.findOne({ "oauth.googleId": profile.id });
           if (user) return done(null, user);
 
-          // Try to find user by email
           const email = profile.emails?.[0].value;
           if (email) {
             user = await User.findOne({ email });
             if (user) {
-              // Link Google to existing user
               user.oauth = { ...user.oauth, googleId: profile.id };
               await user.save();
               return done(null, user);
             }
           }
 
-          // If not found, create new user
           const newUser = await User.create({
             oauth: { googleId: profile.id },
             email: profile.emails?.[0].value,

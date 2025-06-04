@@ -47,8 +47,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: production, // set true only in production (HTTPS)
-      sameSite: "none", // allow cross-origin cookies
+      secure: production,
+      sameSite: production ? "none" : "lax",
       domain: production ? ".kargo.upayan.dev" : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },

@@ -28,7 +28,7 @@ const oauthSchema = new Schema<IOAuth>(
 const userSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true },
-    password: { type: String }, // Only for email/password
+    password: { type: String },
     oauth: { type: oauthSchema, default: {} },
     username: { type: String },
     profilePicture: { type: String },

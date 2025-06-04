@@ -18,23 +18,19 @@ export function setupGitHubStrategy() {
         done: (error: any, user?: any) => void
       ) => {
         try {
-          // Try to find user by githubId in oauth subfield
           let user = await User.findOne({ "oauth.githubId": profile.id });
           if (user) return done(null, user);
 
-          // Try to find user by email
           const email = profile.emails?.[0].value;
           if (email) {
             user = await User.findOne({ email });
             if (user) {
-              // Link GitHub to existing user
               user.oauth = { ...user.oauth, githubId: profile.id };
               await user.save();
               return done(null, user);
             }
           }
 
-          // If not found, create new user
           const newUser = await User.create({
             email,
             name: profile.displayName,

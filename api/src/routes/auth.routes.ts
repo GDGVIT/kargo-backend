@@ -15,7 +15,6 @@ import {
 
 const router = Router();
 
-// Auth middleware to ensure user is authenticated
 function ensureAuthenticated(req: any, res: Response, next: NextFunction) {
   if (typeof req.isAuthenticated === "function" && req.isAuthenticated()) {
     return next();

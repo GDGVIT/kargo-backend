@@ -3,7 +3,6 @@ import User from "../models/user.model";
 import { setupGitHubStrategy } from "./github.strategy";
 import { setupGoogleStrategy } from "./google.strategy";
 
-// Register all strategies in one place for modularity
 setupGitHubStrategy();
 setupGoogleStrategy();
 
