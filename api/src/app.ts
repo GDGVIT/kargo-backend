@@ -5,26 +5,36 @@ import cors from "cors";
 import session from "express-session";
 import passport from "passport";
 import cookieParser from "cookie-parser";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+
 import "./auth/passport";
 import "./auth/local.strategy";
+
 import authRoutes from "./routes/auth.routes";
 import githubRoutes from "./routes/github.routes";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const app = express();
-
 const frontendUrl = process.env.FRONTEND_URL;
+
 app.use(
   cors({
     origin: frontendUrl,
     credentials: true,
   })
 );
-console.log("CORS enabled for:", frontendUrl);
 
+app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: "Too many requests from this IP, please try again later.",
+});
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
@@ -38,8 +48,9 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },
   })
 );
@@ -54,7 +65,7 @@ app.get("/", (_req: Request, res: Response) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/github", githubRoutes);
 
 export default app;

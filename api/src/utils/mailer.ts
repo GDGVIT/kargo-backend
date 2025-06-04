@@ -10,7 +10,7 @@ export const transporter = nodemailer.createTransport({
   },
 });
 
-const FROM_ADDRESS = process.env.SMTP_FROM || `no-reply@yourdomain.com`;
+const FROM_ADDRESS = process.env.SMTP_FROM;
 
 export async function sendVerificationEmail({
   to,
@@ -22,10 +22,15 @@ export async function sendVerificationEmail({
   domain: string;
 }) {
   const verifyUrl = `${domain}/auth/verify-email?token=${token}`;
-  await transporter.sendMail({
-    from: FROM_ADDRESS,
-    to,
-    subject: "Verify your email address",
-    html: `<p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
-  });
+  try {
+    await transporter.sendMail({
+      from: FROM_ADDRESS,
+      to,
+      subject: "Verify your email address",
+      html: `<p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+    });
+  } catch (err) {
+    console.error("Failed to send verification email:", err);
+    throw new Error("Failed to send verification email.");
+  }
 }

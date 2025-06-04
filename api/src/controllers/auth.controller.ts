@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import passport from "passport";
-import User from "../models/user.model";
 import crypto from "crypto";
+import User from "../models/user.model";
 import { sendVerificationEmail } from "../utils/mailer";
 
 function isValidUsername(username: string): boolean {
@@ -17,6 +17,7 @@ function isValidUsername(username: string): boolean {
 function sanitizeUser(user: any) {
   const safeUser = { ...(user.toObject?.() || user) };
   if (safeUser.password) delete safeUser.password;
+  if (safeUser.verificationToken) delete safeUser.verificationToken;
   return safeUser;
 }
 
@@ -27,22 +28,35 @@ export const register = async (
 ) => {
   try {
     const { email, password, name, username } = req.body;
+
+    if (!email || !password || !name) {
+      res.status(400).json({ message: "Missing required fields" });
+      return;
+    }
+
     if (username && !isValidUsername(username)) {
-      return res.status(400).json({
+      res.status(400).json({
         message:
           "Invalid username. Only alphabets, numbers, underscores, and hyphens are allowed. No spaces.",
       });
+      return;
     }
+
     const existing = await User.findOne({ email });
-    if (existing)
-      return res.status(400).json({ message: "User already exists" });
+    if (existing) {
+      res.status(400).json({ message: "User already exists" });
+      return;
+    }
+
     const hash = crypto
       .createHash("md5")
       .update(email.trim().toLowerCase())
       .digest("hex");
+
     const gravatarUrl = `https://www.gravatar.com/avatar/${hash}?d=identicon`;
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString("hex");
+
     const newUser = await User.create({
       email,
       password: hashedPassword,
@@ -52,12 +66,14 @@ export const register = async (
       isVerified: false,
       verificationToken,
     });
+
     await sendVerificationEmail({
       to: email,
       token: verificationToken,
       domain: process.env.CUSTOM_DOMAIN || "http://localhost:3000",
     });
-    return res.json({
+
+    res.json({
       message:
         "Registered successfully. Please check your email to verify your account.",
     });
@@ -66,30 +82,49 @@ export const register = async (
   }
 };
 
-export const login = (req: Request, res: Response, next: NextFunction) => {
-  passport.authenticate("local", (err: any, user: any, info: any) => {
-    if (err) {
-      console.error("Authentication error:", err);
-      return res.status(500).json({ message: "Internal server error" });
-    }
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: info?.message || "Invalid credentials" });
-    }
-    req.logIn(user, (err: any) => {
-      if (err) {
-        return res.status(500).json({ message: "Login failed" });
-      }
-      res.json({ user: sanitizeUser(user) });
+export const login = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      passport.authenticate(
+        "local",
+        (err: any, user: Express.User, info: { message: any }) => {
+          if (err) {
+            return reject(err);
+          }
+          if (!user) {
+            return res
+              .status(401)
+              .json({ message: info?.message || "Invalid credentials" });
+          }
+          req.logIn(user, (err) => {
+            if (err) {
+              return reject(err);
+            }
+            res.json({ user: sanitizeUser(user) });
+            resolve();
+          });
+        }
+      )(req, res, next);
     });
-  })(req, res, next);
+  } catch (err) {
+    next(err);
+  }
 };
 
 export const logout = (req: Request, res: Response) => {
-  req.logout((err: any) => {
+  req.logout((err) => {
     if (err) return res.status(500).json({ message: "Logout failed" });
-    res.clearCookie("connect.sid");
+
+    res.clearCookie("connect.sid", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
     res.json({ message: "Logged out" });
   });
 };
@@ -121,50 +156,92 @@ export const setUsername = async (
   next: NextFunction
 ) => {
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) {
+    if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
+
     const user = req.user as any;
+
     if (user.username) {
       return res.status(400).json({ message: "Username already set" });
     }
+
     const { username } = req.body;
-    if (!isValidUsername(username)) {
+
+    if (!username || !isValidUsername(username)) {
       return res.status(400).json({
         message:
           "Invalid username. Only alphabets, numbers, underscores, and hyphens are allowed. No spaces.",
       });
     }
+
     const existing = await User.findOne({ username });
     if (existing) {
       return res.status(400).json({ message: "Username already taken" });
     }
+
     user.username = username;
     await user.save();
+
     return res.json({
       message: "Username set successfully",
       user: sanitizeUser(user),
     });
   } catch (err) {
-    return res
-      .status(500)
-      .json({ message: "Failed to set username", error: err });
+    next(err);
   }
 };
 
 export const verifyEmail = async (req: Request, res: Response) => {
   const { token } = req.query;
+
   if (!token || typeof token !== "string") {
     return res.status(400).json({ message: "Invalid or missing token" });
   }
+
   const user = await User.findOne({ verificationToken: token });
+
   if (!user) {
     return res.status(400).json({ message: "Invalid or expired token" });
   }
+
   user.isVerified = true;
   user.verificationToken = undefined;
   await user.save();
+
   return res.json({
     message: "Email verified successfully. You can now log in.",
+  });
+};
+
+export const resendVerification = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(400).json({ message: "User not found" });
+  }
+
+  if (user.isVerified) {
+    return res.status(400).json({ message: "Email is already verified" });
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  user.verificationToken = token;
+  await user.save();
+
+  await sendVerificationEmail({
+    to: user.email,
+    token,
+    domain: process.env.CUSTOM_DOMAIN || "http://localhost:3000",
+  });
+
+  res.json({
+    message: "Verification email resent",
   });
 };
