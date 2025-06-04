@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import passport from "passport";
 import { asyncHandler } from "../utils/asyncHandler";
 import {
@@ -15,12 +15,20 @@ import {
 
 const router = Router();
 
+// Auth middleware to ensure user is authenticated
+function ensureAuthenticated(req: any, res: Response, next: NextFunction) {
+  if (typeof req.isAuthenticated === "function" && req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Not authenticated" });
+}
+
 router.post("/register", asyncHandler(register));
 router.post("/login", asyncHandler(login));
 router.post("/logout", logout);
 router.get("/google", googleAuth);
 router.get("/google/callback", ...googleCallback);
-router.get("/me", getMe);
+router.get("/me", ensureAuthenticated, getMe);
 router.post("/set-username", asyncHandler(setUsername));
 router.get("/verify-email", asyncHandler(verifyEmail));
 router.post("/resend-verification", asyncHandler(resendVerification));
