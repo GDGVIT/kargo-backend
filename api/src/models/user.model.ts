@@ -15,6 +15,28 @@ export interface IUser extends Document {
   githubInstallationId?: string[];
   isVerified?: boolean;
   verificationToken?: string;
+  role?: "user" | "admin" | "superadmin";
+  resources?: {
+    requests?: {
+      cpu?: string;
+      memory?: string;
+    };
+    limits?: {
+      cpu?: string;
+      memory?: string;
+    };
+  };
+  extraResources?: {
+    requests?: {
+      cpu?: string;
+      memory?: string;
+    };
+    limits?: {
+      cpu?: string;
+      memory?: string;
+    };
+  };
+  plan?: string; // Plan ID reference
 }
 
 const oauthSchema = new Schema<IOAuth>(
@@ -36,6 +58,32 @@ const userSchema = new Schema<IUser>(
     githubInstallationId: { type: [String], default: [] },
     isVerified: { type: Boolean, default: false },
     verificationToken: { type: String },
+    role: {
+      type: String,
+      enum: ["user", "admin", "superadmin"],
+      default: "user",
+    },
+    resources: {
+      requests: {
+        cpu: { type: String },
+        memory: { type: String },
+      },
+      limits: {
+        cpu: { type: String },
+        memory: { type: String },
+      },
+    },
+    extraResources: {
+      requests: {
+        cpu: { type: String },
+        memory: { type: String },
+      },
+      limits: {
+        cpu: { type: String },
+        memory: { type: String },
+      },
+    },
+    plan: { type: Schema.Types.ObjectId, ref: "Plan", default: null },
   },
   { timestamps: true }
 );

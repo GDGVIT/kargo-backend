@@ -31,7 +31,7 @@ router.post("/login", asyncHandler(login));
 router.post("/logout", logout);
 router.get("/google", googleAuth);
 router.get("/google/callback", ...googleCallback);
-router.get("/me", ensureAuthenticated, getMe);
+router.get("/me", ensureAuthenticated, asyncHandler(getMe));
 router.post("/set-username", asyncHandler(setUsername));
 router.get("/verify-email", asyncHandler(verifyEmail));
 router.post("/resend-verification", asyncHandler(resendVerification));

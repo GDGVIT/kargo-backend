@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import passport from "passport";
 import crypto from "crypto";
 import User from "../models/user.model";
+import Plan from "../models/plan.model";
 import { sendVerificationEmail } from "../utils/mailer";
 
 function isValidUsername(username: string): boolean {
@@ -57,6 +58,9 @@ export const register = async (
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
+    // Assign BASE plan by default
+    const basePlan = await Plan.findOne({ isDefault: true });
+
     const newUser = await User.create({
       email,
       password: hashedPassword,
@@ -65,6 +69,7 @@ export const register = async (
       profilePicture: gravatarUrl,
       isVerified: false,
       verificationToken,
+      plan: basePlan ? basePlan._id : undefined,
     });
 
     await sendVerificationEmail({
@@ -142,9 +147,12 @@ export const googleCallback = [
   },
 ];
 
-export const getMe = (req: Request, res: Response) => {
+export const getMe = async (req: Request, res: Response) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
-    res.json({ user: sanitizeUser(req.user) });
+    // Populate the plan field
+    const user = await User.findById((req.user as any)._id).populate("plan");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ user: sanitizeUser(user) });
   } else {
     res.status(401).json({ message: "Not authenticated" });
   }
