@@ -30,10 +30,13 @@ function buildIngressHost({
   username: string;
   domainPrefix?: string;
 }) {
-  const prefix = domainPrefix ? `${formatK8sName(domainPrefix)}-` : "";
+  const prefix =
+    domainPrefix && domainPrefix.trim() !== ""
+      ? `${formatK8sName(domainPrefix)}-`
+      : "";
   return `${prefix}${formatK8sName(name)}-${formatK8sName(
     username
-  )}-${INGRESS_BASE_DOMAIN}`;
+  )}${INGRESS_BASE_DOMAIN}`;
 }
 
 function buildSubdomainHost({
@@ -57,7 +60,7 @@ export const createApplication = asyncHandler(
       registryToken,
       env: envVars,
       resources,
-      ports,
+      ports = [],
       volumes,
       ingress,
       livenessProbe,
@@ -80,12 +83,23 @@ export const createApplication = asyncHandler(
 
     const ingressHost = buildIngressHost({ name, username, domainPrefix });
 
+    // Build ingress and subdomain routing based on ports
+    let ingressSubdomains: Record<string, number> = {};
     let subdomainHosts: Record<string, string> = {};
-    if (ingress?.subdomains) {
-      Object.keys(ingress.subdomains).forEach((sub) => {
-        subdomainHosts[sub] = buildSubdomainHost({ subdomain: sub, username });
-      });
+    let defaultPort = ports.find((p: any) => p.name === "default");
+    if (!defaultPort && ports.length > 0) {
+      defaultPort = ports[0];
     }
+    // For each port except 'default', create a subdomain
+    ports.forEach((port: any) => {
+      if (port.name && port.name !== "default") {
+        ingressSubdomains[port.name] = port.containerPort;
+        subdomainHosts[port.name] = buildSubdomainHost({
+          subdomain: port.name,
+          username,
+        });
+      }
+    });
 
     const app = await Application.create({
       name,
@@ -103,7 +117,7 @@ export const createApplication = asyncHandler(
       ingress: {
         domainPrefix,
         host: ingressHost,
-        subdomains: ingress?.subdomains || {},
+        subdomains: ingressSubdomains,
         subdomainHosts,
       },
       livenessProbe,
@@ -143,7 +157,7 @@ export const updateApplication = asyncHandler(
       name,
       env: envVars,
       resources,
-      ports,
+      ports = [],
       volumes,
       ingress,
       livenessProbe,
@@ -165,12 +179,23 @@ export const updateApplication = asyncHandler(
 
     const ingressHost = buildIngressHost({ name, username, domainPrefix });
 
+    // Build ingress and subdomain routing based on ports
+    let ingressSubdomains: Record<string, number> = {};
     let subdomainHosts: Record<string, string> = {};
-    if (ingress?.subdomains) {
-      Object.keys(ingress.subdomains).forEach((sub) => {
-        subdomainHosts[sub] = buildSubdomainHost({ subdomain: sub, username });
-      });
+    let defaultPort = ports.find((p: any) => p.name === "default");
+    if (!defaultPort && ports.length > 0) {
+      defaultPort = ports[0];
     }
+    // For each port except 'default', create a subdomain
+    ports.forEach((port: any) => {
+      if (port.name && port.name !== "default") {
+        ingressSubdomains[port.name] = port.containerPort;
+        subdomainHosts[port.name] = buildSubdomainHost({
+          subdomain: port.name,
+          username,
+        });
+      }
+    });
 
     // Before updating, check resource limits for user
     if (resources) {
@@ -268,7 +293,7 @@ export const updateApplication = asyncHandler(
         ingress: {
           domainPrefix,
           host: ingressHost,
-          subdomains: ingress?.subdomains || {},
+          subdomains: ingressSubdomains,
           subdomainHosts,
         },
         livenessProbe,

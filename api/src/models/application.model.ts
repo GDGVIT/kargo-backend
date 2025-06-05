@@ -19,6 +19,8 @@ export interface IApplication extends Document {
     name?: string;
     containerPort: number;
     protocol?: string;
+    ingressEnabled?: boolean; // Add this field
+    subdomain?: string; // Add this field
   }>;
   volumes?: Array<{
     name: string;
@@ -70,6 +72,8 @@ const PortSchema = new Schema(
     name: String,
     containerPort: { type: Number, required: true },
     protocol: String,
+    ingressEnabled: Boolean, // Add this field
+    subdomain: String, // Add this field
   },
   { _id: false }
 );
