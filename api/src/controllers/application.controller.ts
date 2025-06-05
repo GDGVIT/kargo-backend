@@ -172,6 +172,84 @@ export const updateApplication = asyncHandler(
       });
     }
 
+    // Before updating, check resource limits for user
+    if (resources) {
+      // Get user resource usage and allowed
+      const userId = owner;
+      const userModel = await (await import("../models/user.model")).default
+        .findById(userId)
+        .populate("plan");
+      if (userModel) {
+        // Calculate allowed
+        // Fix: plan may be populated or just an id
+        let planResources: any = {};
+        if (
+          userModel.plan &&
+          typeof userModel.plan === "object" &&
+          "resources" in userModel.plan
+        ) {
+          planResources = (userModel.plan as any).resources || {};
+        }
+        const extra = userModel.extraResources || {};
+        function parse(val: string | undefined) {
+          if (!val) return 0;
+          if (val.endsWith("m")) return parseInt(val) / 1000;
+          if (val.endsWith("Mi")) return parseInt(val);
+          if (val.endsWith("Gi")) return parseInt(val) * 1024;
+          return parseFloat(val);
+        }
+        const allowed = {
+          requests: {
+            cpu:
+              parse(planResources.requests?.cpu) + parse(extra.requests?.cpu),
+            memory:
+              parse(planResources.requests?.memory) +
+              parse(extra.requests?.memory),
+          },
+          limits: {
+            cpu: parse(planResources.limits?.cpu) + parse(extra.limits?.cpu),
+            memory:
+              parse(planResources.limits?.memory) + parse(extra.limits?.memory),
+          },
+        };
+        // Sum all app resource usage for this user except this app
+        const ApplicationModel = (await import("../models/application.model"))
+          .default;
+        const apps = await ApplicationModel.find({
+          owner: userId,
+          _id: { $ne: req.params.id },
+        });
+        const usage = {
+          requests: { cpu: 0, memory: 0 },
+          limits: { cpu: 0, memory: 0 },
+        };
+        for (const app of apps) {
+          usage.requests.cpu += parse(app.resources?.requests?.cpu);
+          usage.requests.memory += parse(app.resources?.requests?.memory);
+          usage.limits.cpu += parse(app.resources?.limits?.cpu);
+          usage.limits.memory += parse(app.resources?.limits?.memory);
+        }
+        // Add the new/updated app's resources
+        usage.requests.cpu += parse(resources.requests?.cpu);
+        usage.requests.memory += parse(resources.requests?.memory);
+        usage.limits.cpu += parse(resources.limits?.cpu);
+        usage.limits.memory += parse(resources.limits?.memory);
+        // Check
+        if (
+          usage.requests.cpu > allowed.requests.cpu ||
+          usage.requests.memory > allowed.requests.memory ||
+          usage.limits.cpu > allowed.limits.cpu ||
+          usage.limits.memory > allowed.limits.memory
+        ) {
+          return res.status(400).json({
+            message: "Resource allocation exceeds your allowed quota.",
+            allowed,
+            usage,
+          });
+        }
+      }
+    }
+
     const app = await Application.findByIdAndUpdate(
       req.params.id,
       {

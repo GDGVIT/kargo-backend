@@ -5,6 +5,7 @@ import {
   updateUserResources,
   updateUserRole,
   updateUserExtraResources,
+  getUserResourceUsage,
 } from "../controllers/user.controller";
 import { asyncHandler } from "../utils/asyncHandler";
 import User from "../models/user.model";
@@ -24,6 +25,20 @@ router.put(
   "/:id/extra-resources",
   ensureAdmin,
   asyncHandler(updateUserExtraResources)
+);
+
+// Get total resource usage and allowed for a user
+router.get(
+  "/:id/resource-usage",
+  ensureAuthenticated,
+  asyncHandler(getUserResourceUsage)
+);
+
+// Get total resource usage and allowed for a user (self)
+router.get(
+  "/me/resource-usage",
+  ensureAuthenticated,
+  asyncHandler(getUserResourceUsage)
 );
 
 // GET all users (admin/superadmin only): name, email, role
