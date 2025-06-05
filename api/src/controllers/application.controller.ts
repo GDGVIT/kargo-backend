@@ -22,8 +22,7 @@ function getResourceName(type: string, appName: string) {
   return `${type}-${formatK8sName(appName)}`;
 }
 
-const INGRESS_BASE_DOMAIN =
-  process.env.INGRESS_BASE_DOMAIN || ".apps.kargo.local";
+const INGRESS_BASE_DOMAIN = process.env.INGRESS_BASE_DOMAIN || ".vitians.in";
 
 function buildIngressHost({
   name,
