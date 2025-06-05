@@ -5,6 +5,7 @@ import {
   getApplication,
   updateApplication,
   deleteApplication,
+  applyApplication, // <-- add import
 } from "../controllers/application.controller";
 import { ensureAuthenticated } from "./auth.routes";
 
@@ -17,5 +18,6 @@ router.get("/", getApplications);
 router.get("/:id", getApplication);
 router.put("/:id", updateApplication);
 router.delete("/:id", deleteApplication);
+router.post("/:id/apply", applyApplication); // <-- add route
 
 export default router;

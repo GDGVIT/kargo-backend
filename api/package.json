@@ -40,6 +40,7 @@
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
     "@types/express-session": "^1.18.1",
+    "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/morgan": "^1.9.9",
     "@types/nodemailer": "^6.4.17",
