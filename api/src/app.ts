@@ -12,6 +12,7 @@ import "./auth/local.strategy";
 
 import authRoutes from "./routes/auth.routes";
 import githubRoutes from "./routes/github.routes";
+import applicationRoutes from "./routes/application.routes";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
@@ -67,5 +68,6 @@ app.get("/", (_req: Request, res: Response) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/github", githubRoutes);
+app.use("/api/applications", applicationRoutes);
 
 export default app;

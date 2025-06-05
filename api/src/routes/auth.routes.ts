@@ -15,7 +15,11 @@ import {
 
 const router = Router();
 
-function ensureAuthenticated(req: any, res: Response, next: NextFunction) {
+export function ensureAuthenticated(
+  req: any,
+  res: Response,
+  next: NextFunction
+) {
   if (typeof req.isAuthenticated === "function" && req.isAuthenticated()) {
     return next();
   }
