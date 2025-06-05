@@ -12,14 +12,8 @@ export interface IApplication extends Document {
   env?: Record<string, string>;
   owner: mongoose.Types.ObjectId;
   resources?: {
-    requests?: {
-      cpu?: string;
-      memory?: string;
-    };
-    limits?: {
-      cpu?: string;
-      memory?: string;
-    };
+    requests?: { cpu?: string; memory?: string };
+    limits?: { cpu?: string; memory?: string };
   };
   ports?: Array<{
     name?: string;
@@ -29,7 +23,7 @@ export interface IApplication extends Document {
   volumes?: Array<{
     name: string;
     mountPath: string;
-    type?: string; // e.g., 'configMap', 'secret', 'persistentVolumeClaim'
+    type?: string;
     configMapName?: string;
     secretName?: string;
     claimName?: string;
@@ -50,6 +44,7 @@ export interface IApplication extends Document {
       hosts: string[];
       secretName: string;
     }>;
+    subdomains?: Record<string, number>;
   };
   livenessProbe?: Record<string, any>;
   readinessProbe?: Record<string, any>;
@@ -62,80 +57,103 @@ export interface IApplication extends Document {
   affinity?: Record<string, any>;
 }
 
+const ResourceSchema = new Schema(
+  {
+    cpu: String,
+    memory: String,
+  },
+  { _id: false }
+);
+
+const PortSchema = new Schema(
+  {
+    name: String,
+    containerPort: { type: Number, required: true },
+    protocol: String,
+  },
+  { _id: false }
+);
+
+const SecretItemSchema = new Schema(
+  {
+    key: String,
+    path: String,
+  },
+  { _id: false }
+);
+
+const VolumeSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    mountPath: { type: String, required: true },
+    type: String,
+    configMapName: String,
+    secretName: String,
+    claimName: String,
+    size: String,
+    readOnly: Boolean,
+    secretItems: [SecretItemSchema],
+  },
+  { _id: false }
+);
+
+const IngressPathSchema = new Schema(
+  {
+    path: { type: String, required: true },
+    pathType: String,
+    servicePort: Number,
+  },
+  { _id: false }
+);
+
+const TLSConfigSchema = new Schema(
+  {
+    hosts: [String],
+    secretName: String,
+  },
+  { _id: false }
+);
+
+const IngressSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    host: String,
+    paths: [IngressPathSchema],
+    annotations: { type: Map, of: String },
+    tls: [TLSConfigSchema],
+    subdomains: { type: Map, of: Number },
+  },
+  { _id: false }
+);
+
 const applicationSchema = new Schema<IApplication>(
   {
     name: { type: String, required: true },
     imageUrl: { type: String, required: true },
     imageTag: { type: String, required: true },
     registryToken: { type: String, required: true },
-    namespace: { type: String },
-    deploymentName: { type: String },
-    serviceName: { type: String },
-    ingressHost: { type: String },
+    namespace: String,
+    deploymentName: String,
+    serviceName: String,
+    ingressHost: String,
     env: { type: Map, of: String },
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
     resources: {
-      requests: {
-        cpu: { type: String },
-        memory: { type: String },
-      },
-      limits: {
-        cpu: { type: String },
-        memory: { type: String },
-      },
+      requests: ResourceSchema,
+      limits: ResourceSchema,
     },
-    ports: [
-      {
-        name: { type: String },
-        containerPort: { type: Number, required: true },
-        protocol: { type: String },
-      },
-    ],
-    volumes: [
-      {
-        name: { type: String, required: true },
-        mountPath: { type: String, required: true },
-        type: { type: String },
-        configMapName: { type: String },
-        secretName: { type: String },
-        claimName: { type: String },
-        size: { type: String },
-        readOnly: { type: Boolean },
-        secretItems: [
-          {
-            key: { type: String },
-            path: { type: String },
-          },
-        ],
-      },
-    ],
-    ingress: {
-      enabled: { type: Boolean, default: false },
-      host: { type: String },
-      paths: [
-        {
-          path: { type: String, required: true },
-          pathType: { type: String },
-          servicePort: { type: Number },
-        },
-      ],
-      annotations: { type: Map, of: String },
-      tls: [
-        {
-          hosts: [{ type: String }],
-          secretName: { type: String },
-        },
-      ],
-    },
-    livenessProbe: { type: Schema.Types.Mixed },
-    readinessProbe: { type: Schema.Types.Mixed },
-    command: [{ type: String }],
-    args: [{ type: String }],
+    ports: [PortSchema],
+    volumes: [VolumeSchema],
+    ingress: IngressSchema,
+    livenessProbe: Schema.Types.Mixed,
+    readinessProbe: Schema.Types.Mixed,
+    command: [String],
+    args: [String],
     labels: { type: Map, of: String },
     annotations: { type: Map, of: String },
     nodeSelector: { type: Map, of: String },
-    tolerations: [{ type: Schema.Types.Mixed }],
-    affinity: { type: Schema.Types.Mixed },
+    tolerations: [Schema.Types.Mixed],
+    affinity: Schema.Types.Mixed,
   },
   { timestamps: true }
 );
