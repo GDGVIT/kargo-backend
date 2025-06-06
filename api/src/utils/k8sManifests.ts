@@ -83,19 +83,18 @@ function getEnvObject(env: any): Record<string, string> {
 function generateSecretYaml(
   sanitizedApp: IApplication,
   namespace: string
-): string | null {
+): string {
   const envObj = getEnvObject(sanitizedApp.env);
-
   const filtered = Object.entries(envObj).filter(
     ([k, v]) => k && typeof v === "string" && v.length > 0
   );
-  if (filtered.length === 0) return null;
-  const data = filtered
+  let data = filtered
     .map(
       ([key, value]) =>
         `  ${key}: ${Buffer.from(value, "utf8").toString("base64")}`
     )
     .join("\n");
+  if (!data) data = "  # No environment variables provided\n";
   return [
     `apiVersion: v1`,
     `kind: Secret`,

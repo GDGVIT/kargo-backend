@@ -338,8 +338,7 @@ export const applyApplication = asyncHandler(
       path.join(appDir, "namespace.yaml"),
       `apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ${app.namespace}\n`
     );
-    if (secretYaml)
-      fs.writeFileSync(path.join(appDir, "secret.yaml"), secretYaml);
+    fs.writeFileSync(path.join(appDir, "secret.yaml"), secretYaml || "");
     fs.writeFileSync(path.join(appDir, "deployment.yaml"), deploymentYaml);
     fs.writeFileSync(path.join(appDir, "service.yaml"), serviceYaml);
     if (ingressYaml)
