@@ -84,24 +84,17 @@ export const createApplication = asyncHandler(
     const deploymentName = getResourceName("deploy", name);
     const serviceName = getResourceName("svc", name);
 
-    const ingressHost = buildIngressHost({ name, username, domainPrefix });
-
-    // Build ingress and subdomain routing based on ports
-    let ingressSubdomains: Record<string, number> = {};
-    let subdomainHosts: Record<string, string> = {};
-    let defaultPort = ports.find((p: any) => p.name === "default");
-    if (!defaultPort && ports.length > 0) {
-      defaultPort = ports[0];
-    }
-    // For each port except 'default', create a subdomain
-    ports.forEach((port: any) => {
-      if (port.name && port.name !== "default") {
-        ingressSubdomains[port.name] = port.containerPort;
-        subdomainHosts[port.name] = buildSubdomainHost({
-          subdomain: port.name,
-          username,
-        });
+    const updatedPorts = ports.map((port: any) => {
+      if (port.ingressEnabled) {
+        const host =
+          port.subdomain && port.subdomain.trim() !== ""
+            ? `${formatK8sName(port.subdomain)}-${formatK8sName(
+                username
+              )}${INGRESS_BASE_DOMAIN}`
+            : `${formatK8sName(username)}${INGRESS_BASE_DOMAIN}`;
+        return { ...port, ingressHost: host };
       }
+      return port;
     });
 
     const app = await Application.create({
@@ -112,17 +105,11 @@ export const createApplication = asyncHandler(
       namespace,
       deploymentName,
       serviceName,
-      ingressHost,
       env: envVars,
       resources,
-      ports,
+      ports: updatedPorts,
       volumes,
-      ingress: {
-        domainPrefix,
-        host: ingressHost,
-        subdomains: ingressSubdomains,
-        subdomainHosts,
-      },
+      ingress,
       livenessProbe,
       readinessProbe,
       command,
@@ -180,36 +167,25 @@ export const updateApplication = asyncHandler(
     const deploymentName = getResourceName("deploy", name);
     const serviceName = getResourceName("svc", name);
 
-    const ingressHost = buildIngressHost({ name, username, domainPrefix });
-
-    // Build ingress and subdomain routing based on ports
-    let ingressSubdomains: Record<string, number> = {};
-    let subdomainHosts: Record<string, string> = {};
-    let defaultPort = ports.find((p: any) => p.name === "default");
-    if (!defaultPort && ports.length > 0) {
-      defaultPort = ports[0];
-    }
-    // For each port except 'default', create a subdomain
-    ports.forEach((port: any) => {
-      if (port.name && port.name !== "default") {
-        ingressSubdomains[port.name] = port.containerPort;
-        subdomainHosts[port.name] = buildSubdomainHost({
-          subdomain: port.name,
-          username,
-        });
+    const updatedPorts = ports.map((port: any) => {
+      if (port.ingressEnabled) {
+        const host =
+          port.subdomain && port.subdomain.trim() !== ""
+            ? `${formatK8sName(port.subdomain)}-${formatK8sName(
+                username
+              )}${INGRESS_BASE_DOMAIN}`
+            : `${formatK8sName(username)}${INGRESS_BASE_DOMAIN}`;
+        return { ...port, ingressHost: host };
       }
+      return port;
     });
 
-    // Before updating, check resource limits for user
     if (resources) {
-      // Get user resource usage and allowed
       const userId = owner;
       const userModel = await (await import("../models/user.model")).default
         .findById(userId)
         .populate("plan");
       if (userModel) {
-        // Calculate allowed
-        // Fix: plan may be populated or just an id
         let planResources: any = {};
         if (
           userModel.plan &&
@@ -240,7 +216,7 @@ export const updateApplication = asyncHandler(
               parse(planResources.limits?.memory) + parse(extra.limits?.memory),
           },
         };
-        // Sum all app resource usage for this user except this app
+
         const ApplicationModel = (await import("../models/application.model"))
           .default;
         const apps = await ApplicationModel.find({
@@ -257,12 +233,12 @@ export const updateApplication = asyncHandler(
           usage.limits.cpu += parse(app.resources?.limits?.cpu);
           usage.limits.memory += parse(app.resources?.limits?.memory);
         }
-        // Add the new/updated app's resources
+
         usage.requests.cpu += parse(resources.requests?.cpu);
         usage.requests.memory += parse(resources.requests?.memory);
         usage.limits.cpu += parse(resources.limits?.cpu);
         usage.limits.memory += parse(resources.limits?.memory);
-        // Check
+
         if (
           usage.requests.cpu > allowed.requests.cpu ||
           usage.requests.memory > allowed.requests.memory ||
@@ -288,17 +264,11 @@ export const updateApplication = asyncHandler(
         namespace,
         deploymentName,
         serviceName,
-        ingressHost,
         env: envVars,
         resources,
-        ports,
+        ports: updatedPorts,
         volumes,
-        ingress: {
-          domainPrefix,
-          host: ingressHost,
-          subdomains: ingressSubdomains,
-          subdomainHosts,
-        },
+        ingress,
         livenessProbe,
         readinessProbe,
         command,
@@ -336,10 +306,10 @@ export const applyApplication = asyncHandler(
       return res.status(500).json({ message: "MANIFESTS_DIR not set in env" });
     const appDir = path.join(manifestsDir, userId, appId);
     fs.mkdirSync(appDir, { recursive: true });
-    // Generate namespace manifest
+
     const namespaceYaml = `apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ${app.namespace}\n`;
     fs.writeFileSync(path.join(appDir, "namespace.yaml"), namespaceYaml);
-    // Apply namespace first
+
     exec(
       `kubectl apply -f namespace.yaml`,
       { cwd: appDir },
@@ -350,7 +320,7 @@ export const applyApplication = asyncHandler(
             .status(500)
             .json({ message: "Failed to apply namespace", error: nsStderr });
         }
-        // Continue with other manifests
+
         const { deploymentYaml, serviceYaml, ingressYaml } =
           generateK8sManifests(app);
         fs.writeFileSync(path.join(appDir, "deployment.yaml"), deploymentYaml);

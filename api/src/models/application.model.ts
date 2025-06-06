@@ -8,7 +8,6 @@ export interface IApplication extends Document {
   namespace?: string;
   deploymentName?: string;
   serviceName?: string;
-  ingressHost?: string;
   env?: Record<string, string>;
   owner: mongoose.Types.ObjectId;
   resources?: {
@@ -19,8 +18,9 @@ export interface IApplication extends Document {
     name?: string;
     containerPort: number;
     protocol?: string;
-    ingressEnabled?: boolean; // Add this field
-    subdomain?: string; // Add this field
+    ingressEnabled?: boolean;
+    subdomain?: string;
+    ingressHost?: string;
   }>;
   volumes?: Array<{
     name: string;
@@ -72,8 +72,9 @@ const PortSchema = new Schema(
     name: String,
     containerPort: { type: Number, required: true },
     protocol: String,
-    ingressEnabled: Boolean, // Add this field
-    subdomain: String, // Add this field
+    ingressEnabled: Boolean,
+    subdomain: String,
+    ingressHost: String,
   },
   { _id: false }
 );
@@ -139,7 +140,6 @@ const applicationSchema = new Schema<IApplication>(
     namespace: String,
     deploymentName: String,
     serviceName: String,
-    ingressHost: String,
     env: { type: Map, of: String },
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
     resources: {
