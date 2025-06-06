@@ -183,21 +183,15 @@ spec:
       port: 80
       targetPort: ${sanitizedApp.ports?.[0]?.containerPort || 3000}`;
 
-  const ingressYamls = (sanitizedApp.ports || [])
-    .filter((p: any) => p.ingressEnabled && p.ingressHost)
-    .map(
-      (p: any) => `---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: ${sanitizedApp.name}-ingress-${p.name || p.containerPort}
-  namespace: ${namespace}
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-spec:
-  rules:
-    - host: ${p.ingressHost}
+  // Single Ingress resource with multiple rules/hosts
+  const ingressPorts = (sanitizedApp.ports || []).filter(
+    (p: any) => p.ingressEnabled && p.ingressHost
+  );
+  let ingressYaml = "";
+  if (ingressPorts.length > 0) {
+    const rules = ingressPorts
+      .map(
+        (p: any) => `    - host: ${p.ingressHost}
       http:
         paths:
           - path: /
@@ -206,12 +200,23 @@ spec:
               service:
                 name: ${sanitizedApp.serviceName}
                 port:
-                  number: ${p.containerPort}
-`
-    )
-    .join("\n");
-
-  const ingressYaml = ingressYamls || undefined;
+                  number: ${p.containerPort}`
+      )
+      .join("\n");
+    ingressYaml = `---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${sanitizedApp.name}-ingress
+  namespace: ${namespace}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+${rules}
+`;
+  }
 
   return {
     deploymentYaml: deployment,
