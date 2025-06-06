@@ -35,22 +35,15 @@ export function generateK8sManifests(app: IApplication): {
   const sanitizedApp = stripDates(safeApp);
   const namespace = sanitizedApp.namespace || "default";
 
-  // --- Validation for duplicate ports and ingress hosts ---
+  // --- Validation for duplicate ports ---
   if (sanitizedApp.ports?.length) {
     const portSet = new Set<number>();
-    const hostSet = new Set<string>();
     for (const p of sanitizedApp.ports) {
       if (typeof p.containerPort !== "number") continue;
       if (portSet.has(p.containerPort)) {
         throw new Error(`Duplicate containerPort found: ${p.containerPort}`);
       }
       portSet.add(p.containerPort);
-      if (p.ingressEnabled && p.ingressHost) {
-        if (hostSet.has(p.ingressHost)) {
-          throw new Error(`Duplicate ingressHost found: ${p.ingressHost}`);
-        }
-        hostSet.add(p.ingressHost);
-      }
     }
   }
   // --- End validation ---
@@ -96,10 +89,13 @@ export function generateK8sManifests(app: IApplication): {
   const portsBlock = sanitizedApp.ports?.length
     ? `          ports:\n${sanitizedApp.ports
         .map(
-          (p: { name: string; containerPort: number; protocol?: string }) =>
-            `            - name: ${p.name}\n              containerPort: ${
-              p.containerPort
-            }\n              protocol: ${p.protocol || "TCP"}`
+          (
+            p: { name?: string; containerPort: number; protocol?: string },
+            idx: number
+          ) =>
+            `            - name: port${idx}` +
+            `\n              containerPort: ${p.containerPort}` +
+            `\n              protocol: ${p.protocol || "TCP"}`
         )
         .join("\n")}`
     : "";
@@ -202,7 +198,7 @@ ${volumesBlock ? volumesBlock + "\n" : ""}${
           },
           idx: number
         ) =>
-          `    - name: ${p.name || `port${idx}`}\n      protocol: ${
+          `    - name: port${idx}\n      protocol: ${
             p.protocol || "TCP"
           }\n      port: ${
             p.servicePort || p.containerPort
@@ -225,39 +221,44 @@ spec:
   ports:
 ${servicePorts}`;
 
-  // Single Ingress resource with multiple rules/hosts
-  const ingressPorts = (sanitizedApp.ports || []).filter(
-    (p: any) => p.ingressEnabled && p.ingressHost
-  );
+  // Ingress generation: one Ingress with multiple rules, one per port with a subdomain
   let ingressYaml = "";
+  const ingressPorts = (sanitizedApp.ports || []).filter(
+    (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
+  );
   if (ingressPorts.length > 0) {
     const rules = ingressPorts
-      .map(
-        (p: any) => `    - host: ${p.ingressHost}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: ${sanitizedApp.serviceName}
-                port:
-                  number: ${p.containerPort}`
-      )
+      .map((p: any) => {
+        let host = p.subdomain;
+        if (host.endsWith(".")) host = host.slice(0, -1);
+        return [
+          `    - host: ${host}`,
+          `      http:`,
+          `        paths:`,
+          `          - path: /`,
+          `            pathType: Prefix`,
+          `            backend:`,
+          `              service:`,
+          `                name: ${sanitizedApp.serviceName}`,
+          `                port:`,
+          `                  number: ${p.containerPort}`,
+        ].join("\n");
+      })
       .join("\n");
-    ingressYaml = `---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: ${sanitizedApp.name}-ingress
-  namespace: ${namespace}
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-spec:
-  rules:
-${rules}
-`;
+    ingressYaml = [
+      `---`,
+      `apiVersion: networking.k8s.io/v1`,
+      `kind: Ingress`,
+      `metadata:`,
+      `  name: ${sanitizedApp.name}-ingress`,
+      `  namespace: ${namespace}`,
+      `  annotations:`,
+      `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
+      `    nginx.ingress.kubernetes.io/ssl-redirect: "false"`,
+      `spec:`,
+      `  rules:`,
+      rules,
+    ].join("\n");
   }
 
   return {

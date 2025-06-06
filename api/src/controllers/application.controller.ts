@@ -67,7 +67,6 @@ export const createApplication = asyncHandler(
       resources,
       ports = [],
       volumes,
-      ingress,
       livenessProbe,
       readinessProbe,
       command,
@@ -78,44 +77,40 @@ export const createApplication = asyncHandler(
       affinity,
     } = req.body;
     const owner = (req.user as any)?._id || req.body.owner;
-    const username = (req.user as any)?.username || req.body.username || "user";
-    const domainPrefix =
-      req.body.ingress?.domainPrefix || req.body.domainPrefix || "";
-
     const namespace = getNamespace(owner.toString(), name);
     const deploymentName = getResourceName("deploy", name);
     const serviceName = getResourceName("svc", name);
 
+    // Only keep allowed port fields
+    const username = (req.user as any)?.username || req.body.username || "user";
+    const baseDomain = getBaseDomain();
     const updatedPorts = ports.map((port: any, idx: number) => {
-      // Ensure subdomain is always a string and trimmed
-      const subdomain =
+      let subdomain =
         typeof port.subdomain === "string"
           ? port.subdomain.trim()
           : port.subdomain !== undefined && port.subdomain !== null
           ? String(port.subdomain).trim()
           : "";
-      if (port.ingressEnabled) {
-        const host = buildIngressHost({
-          username,
-          subdomain,
-        });
-        return { ...port, subdomain, ingressHost: host };
-      }
-      return { ...port, subdomain };
-    });
-
-    // Validate unique ingressHost for ports with ingressEnabled
-    const ingressHosts = new Set();
-    for (const port of updatedPorts) {
-      if (port.ingressEnabled && port.ingressHost) {
-        if (ingressHosts.has(port.ingressHost)) {
-          return res.status(400).json({
-            message: `Duplicate ingressHost found: ${port.ingressHost}. Each port with ingress enabled must have a unique subdomain.`,
-          });
+      if (subdomain) {
+        // Only append username and baseDomain if not already present
+        const fqdn = `${formatK8sName(subdomain)}.${formatK8sName(
+          username
+        )}.${baseDomain}`;
+        if (
+          !subdomain.endsWith(baseDomain) &&
+          !subdomain.endsWith(`.${baseDomain}`)
+        ) {
+          subdomain = fqdn;
         }
-        ingressHosts.add(port.ingressHost);
+        // else, use as-is (already fully qualified)
       }
-    }
+      return {
+        name: `port${idx}`,
+        containerPort: port.containerPort,
+        protocol: port.protocol,
+        subdomain,
+      };
+    });
 
     const app = await Application.create({
       name,
@@ -129,7 +124,6 @@ export const createApplication = asyncHandler(
       resources,
       ports: updatedPorts,
       volumes,
-      ingress,
       livenessProbe,
       readinessProbe,
       command,
@@ -169,7 +163,6 @@ export const updateApplication = asyncHandler(
       resources,
       ports = [],
       volumes,
-      ingress,
       livenessProbe,
       readinessProbe,
       command,
@@ -180,43 +173,40 @@ export const updateApplication = asyncHandler(
       affinity,
     } = req.body;
     const owner = (req.user as any)?._id || req.body.owner;
-    const username = (req.user as any)?.username || req.body.username || "user";
-    const domainPrefix =
-      req.body.ingress?.domainPrefix || req.body.domainPrefix || "";
     const namespace = getNamespace(owner.toString(), name);
     const deploymentName = getResourceName("deploy", name);
     const serviceName = getResourceName("svc", name);
 
+    // Only keep allowed port fields
+    const username = (req.user as any)?.username || req.body.username || "user";
+    const baseDomain = getBaseDomain();
     const updatedPorts = ports.map((port: any, idx: number) => {
-      // Ensure subdomain is always a string and trimmed
-      const subdomain =
+      let subdomain =
         typeof port.subdomain === "string"
           ? port.subdomain.trim()
           : port.subdomain !== undefined && port.subdomain !== null
           ? String(port.subdomain).trim()
           : "";
-      if (port.ingressEnabled) {
-        const host = buildIngressHost({
-          username,
-          subdomain,
-        });
-        return { ...port, subdomain, ingressHost: host };
-      }
-      return { ...port, subdomain };
-    });
-
-    // Validate unique ingressHost for ports with ingressEnabled
-    const ingressHosts = new Set();
-    for (const port of updatedPorts) {
-      if (port.ingressEnabled && port.ingressHost) {
-        if (ingressHosts.has(port.ingressHost)) {
-          return res.status(400).json({
-            message: `Duplicate ingressHost found: ${port.ingressHost}. Each port with ingress enabled must have a unique subdomain.`,
-          });
+      if (subdomain) {
+        // Only append username and baseDomain if not already present
+        const fqdn = `${formatK8sName(subdomain)}.${formatK8sName(
+          username
+        )}.${baseDomain}`;
+        if (
+          !subdomain.endsWith(baseDomain) &&
+          !subdomain.endsWith(`.${baseDomain}`)
+        ) {
+          subdomain = fqdn;
         }
-        ingressHosts.add(port.ingressHost);
+        // else, use as-is (already fully qualified)
       }
-    }
+      return {
+        name: `port${idx}`,
+        containerPort: port.containerPort,
+        protocol: port.protocol,
+        subdomain,
+      };
+    });
 
     if (resources) {
       const userId = owner;
@@ -306,7 +296,6 @@ export const updateApplication = asyncHandler(
         resources,
         ports: updatedPorts,
         volumes,
-        ingress,
         livenessProbe,
         readinessProbe,
         command,

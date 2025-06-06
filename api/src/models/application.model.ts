@@ -18,9 +18,7 @@ export interface IApplication extends Document {
     name?: string;
     containerPort: number;
     protocol?: string;
-    ingressEnabled?: boolean;
     subdomain?: string;
-    ingressHost?: string;
   }>;
   volumes?: Array<{
     name: string;
@@ -33,21 +31,6 @@ export interface IApplication extends Document {
     readOnly?: boolean;
     secretItems?: Array<{ key: string; path: string }>;
   }>;
-  ingress?: {
-    enabled: boolean;
-    host?: string;
-    paths?: Array<{
-      path: string;
-      pathType?: string;
-      servicePort?: number;
-    }>;
-    annotations?: Record<string, string>;
-    tls?: Array<{
-      hosts: string[];
-      secretName: string;
-    }>;
-    subdomains?: Record<string, number>;
-  };
   livenessProbe?: Record<string, any>;
   readinessProbe?: Record<string, any>;
   command?: string[];
@@ -72,9 +55,7 @@ const PortSchema = new Schema(
     name: String,
     containerPort: { type: Number, required: true },
     protocol: String,
-    ingressEnabled: Boolean,
     subdomain: String,
-    ingressHost: String,
   },
   { _id: false }
 );
@@ -102,35 +83,6 @@ const VolumeSchema = new Schema(
   { _id: false }
 );
 
-const IngressPathSchema = new Schema(
-  {
-    path: { type: String, required: true },
-    pathType: String,
-    servicePort: Number,
-  },
-  { _id: false }
-);
-
-const TLSConfigSchema = new Schema(
-  {
-    hosts: [String],
-    secretName: String,
-  },
-  { _id: false }
-);
-
-const IngressSchema = new Schema(
-  {
-    enabled: { type: Boolean, default: false },
-    host: String,
-    paths: [IngressPathSchema],
-    annotations: { type: Map, of: String },
-    tls: [TLSConfigSchema],
-    subdomains: { type: Map, of: Number },
-  },
-  { _id: false }
-);
-
 const applicationSchema = new Schema<IApplication>(
   {
     name: { type: String, required: true },
@@ -148,7 +100,6 @@ const applicationSchema = new Schema<IApplication>(
     },
     ports: [PortSchema],
     volumes: [VolumeSchema],
-    ingress: IngressSchema,
     livenessProbe: Schema.Types.Mixed,
     readinessProbe: Schema.Types.Mixed,
     command: [String],
