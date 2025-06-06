@@ -359,9 +359,17 @@ export const applyApplication = asyncHandler(
           { cwd: appDir },
           (err, stdout, stderr) => {
             if (err) {
-              return res
-                .status(500)
-                .json({ message: "Failed to apply secret", error: stderr });
+              const secretContent = fs.readFileSync(
+                path.join(appDir, "secret.yaml"),
+                "utf8"
+              );
+              console.error("Failed to apply secret:", stderr);
+              console.error("Secret manifest content:\n", secretContent);
+              return res.status(500).json({
+                message: "Failed to apply secret",
+                error: stderr,
+                secret: secretContent,
+              });
             }
             exec(
               `kubectl apply -f . --prune -l app=${app.name} --field-manager=application-controller`,
