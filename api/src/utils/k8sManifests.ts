@@ -65,17 +65,53 @@ function generateIngressYaml(sanitizedApp: any, namespace: string): string {
   ].join("\n");
 }
 
-function generateEnvBlock(env: Record<string, string> | undefined): string {
-  if (!env || Object.keys(env).length === 0) return "";
-  return (
-    `          env:\n` +
-    Object.entries(env)
-      .map(
-        ([key, value]) =>
-          `            - name: ${key}\n              value: "${value}"`
-      )
-      .join("\n")
+function getEnvObject(env: any): Record<string, string> {
+  if (!env) return {};
+  if (env instanceof Map) {
+    return Object.fromEntries(env.entries());
+  }
+  if (typeof env.toObject === "function") {
+    return env.toObject();
+  }
+
+  if (typeof env === "object" && env !== null) {
+    return JSON.parse(JSON.stringify(env));
+  }
+  return {};
+}
+
+function generateSecretYaml(
+  sanitizedApp: IApplication,
+  namespace: string
+): string | null {
+  const envObj = getEnvObject(sanitizedApp.env);
+
+  const filtered = Object.entries(envObj).filter(
+    ([k, v]) => k && typeof v === "string" && v.length > 0
   );
+  if (filtered.length === 0) return null;
+  const data = filtered
+    .map(
+      ([key, value]) =>
+        `  ${key}: ${Buffer.from(value, "utf8").toString("base64")}`
+    )
+    .join("\n");
+  return [
+    `apiVersion: v1`,
+    `kind: Secret`,
+    `metadata:`,
+    `  name: ${sanitizedApp.name}-env-secret`,
+    `  namespace: ${namespace}`,
+    `type: Opaque`,
+    `data:`,
+    data,
+  ].join("\n");
+}
+
+function generateEnvFromSecretBlock(sanitizedApp: IApplication): string {
+  const envObj = getEnvObject(sanitizedApp.env);
+  if (!envObj || Object.keys(envObj).length === 0) return "";
+  return `          envFrom:\n            - secretRef:\n                name: ${sanitizedApp.name}-env-secret`;
 }
 
 function generateResourcesBlock(resources: any): string {
@@ -206,6 +242,7 @@ export function generateK8sManifests(app: IApplication): {
   deploymentYaml: string;
   serviceYaml: string;
   ingressYaml: string;
+  secretYaml?: string;
 } {
   const safeApp = app.toObject ? app.toObject() : app;
   const sanitizedApp = stripDates(safeApp);
@@ -222,7 +259,15 @@ export function generateK8sManifests(app: IApplication): {
     }
   }
 
-  const envBlock = generateEnvBlock(sanitizedApp.env);
+  // Use env as secret (from original app, not sanitized)
+  const secretYaml = generateSecretYaml(
+    { ...sanitizedApp, env: app.env },
+    namespace
+  );
+  const envFromSecretBlock = generateEnvFromSecretBlock({
+    ...sanitizedApp,
+    env: app.env,
+  });
   const resourcesBlock = generateResourcesBlock(sanitizedApp.resources);
   const volumeMountsBlock = generateVolumeMountsBlock(sanitizedApp.volumes);
   const volumesBlock = generateVolumesBlock(sanitizedApp.volumes);
@@ -239,6 +284,16 @@ export function generateK8sManifests(app: IApplication): {
   );
   const affinityBlock = generateAffinityBlock(sanitizedApp.affinity);
   const tolerationsBlock = generateTolerationsBlock(sanitizedApp.tolerations);
+
+  let envSection = "";
+  if (envFromSecretBlock) {
+    envSection = envFromSecretBlock + "\n";
+  } else if (
+    sanitizedApp.env &&
+    Object.keys(getEnvObject(sanitizedApp.env)).length > 0
+  ) {
+    envSection = "          # WARNING: env present but secret not generated!\n";
+  }
 
   const deployment = `apiVersion: apps/v1
 kind: Deployment
@@ -258,7 +313,7 @@ spec:
       containers:
         - name: ${sanitizedApp.name}
           image: ${sanitizedApp.imageUrl}:${sanitizedApp.imageTag}
-${envBlock ? envBlock + "\n" : ""}${portsBlock ? portsBlock + "\n" : ""}${
+${envSection}${portsBlock ? portsBlock + "\n" : ""}${
     commandBlock ? commandBlock + "\n" : ""
   }${argsBlock ? argsBlock + "\n" : ""}${
     resourcesBlock ? resourcesBlock + "\n" : ""
@@ -291,5 +346,6 @@ ${servicePorts}`;
     deploymentYaml: deployment,
     serviceYaml: service,
     ingressYaml,
+    secretYaml: secretYaml || undefined,
   };
 }

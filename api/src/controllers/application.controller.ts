@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import Application from "../models/application.model";
-import { asyncHandler } from "../utils/asyncHandler";
 import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
+import Application from "../models/application.model";
+import { asyncHandler } from "../utils/asyncHandler";
 import { generateK8sManifests } from "../utils/k8sManifests";
 
 function formatK8sName(base: string) {
@@ -325,43 +325,34 @@ export const applyApplication = asyncHandler(
     if (!manifestsDir)
       return res.status(500).json({ message: "MANIFESTS_DIR not set in env" });
     const appDir = path.join(manifestsDir, userId, appId);
+
+    if (fs.existsSync(appDir)) {
+      fs.rmSync(appDir, { recursive: true, force: true });
+    }
     fs.mkdirSync(appDir, { recursive: true });
 
-    const namespaceYaml = `apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ${app.namespace}\n`;
-    fs.writeFileSync(path.join(appDir, "namespace.yaml"), namespaceYaml);
+    const { deploymentYaml, serviceYaml, ingressYaml, secretYaml } =
+      generateK8sManifests(app);
 
-    exec(
-      `kubectl apply -f namespace.yaml`,
-      { cwd: appDir },
-      (nsErr, nsStdout, nsStderr) => {
-        if (nsErr) {
-          console.error("Failed to apply namespace:", nsStderr);
-          return res
-            .status(500)
-            .json({ message: "Failed to apply namespace", error: nsStderr });
-        }
-
-        const { deploymentYaml, serviceYaml, ingressYaml } =
-          generateK8sManifests(app);
-        fs.writeFileSync(path.join(appDir, "deployment.yaml"), deploymentYaml);
-        fs.writeFileSync(path.join(appDir, "service.yaml"), serviceYaml);
-        if (ingressYaml)
-          fs.writeFileSync(path.join(appDir, "ingress.yaml"), ingressYaml);
-        exec(`kubectl apply -f .`, { cwd: appDir }, (err, stdout, stderr) => {
-          if (err) {
-            console.error("Failed to apply manifests:", stderr);
-            return res
-              .status(500)
-              .json({ message: "Failed to apply manifests", error: stderr });
-          }
-          console.log("kubectl apply output:", stdout);
-          res.json({
-            message: "Application applied successfully",
-            output: stdout,
-          });
-        });
-      }
+    fs.writeFileSync(
+      path.join(appDir, "namespace.yaml"),
+      `apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ${app.namespace}\n`
     );
+    if (secretYaml)
+      fs.writeFileSync(path.join(appDir, "secret.yaml"), secretYaml);
+    fs.writeFileSync(path.join(appDir, "deployment.yaml"), deploymentYaml);
+    fs.writeFileSync(path.join(appDir, "service.yaml"), serviceYaml);
+    if (ingressYaml)
+      fs.writeFileSync(path.join(appDir, "ingress.yaml"), ingressYaml);
+
+    exec(`kubectl apply -f .`, { cwd: appDir }, (err, stdout, stderr) => {
+      if (err) {
+        return res
+          .status(500)
+          .json({ message: "Failed to apply manifests", error: stderr });
+      }
+      res.json({ message: "Application applied", output: stdout });
+    });
   }
 );
 
