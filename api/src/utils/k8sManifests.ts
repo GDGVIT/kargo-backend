@@ -260,7 +260,6 @@ export function generateK8sManifests(app: IApplication): {
     }
   }
 
-  // Use env as secret (from original app, not sanitized)
   const secretYaml = generateSecretYaml(
     { ...sanitizedApp, env: app.env },
     namespace
