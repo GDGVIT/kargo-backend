@@ -344,14 +344,33 @@ export const applyApplication = asyncHandler(
     if (ingressYaml)
       fs.writeFileSync(path.join(appDir, "ingress.yaml"), ingressYaml);
 
-    exec(`kubectl apply -f .`, { cwd: appDir }, (err, stdout, stderr) => {
-      if (err) {
-        return res
-          .status(500)
-          .json({ message: "Failed to apply manifests", error: stderr });
+    exec(
+      `kubectl apply -f secret.yaml`,
+      { cwd: appDir },
+      (err, stdout, stderr) => {
+        if (err) {
+          return res
+            .status(500)
+            .json({ message: "Failed to apply secret", error: stderr });
+        }
+
+        exec(
+          `kubectl apply -f . --prune -l app=${app.name} --field-manager=application-controller`,
+          { cwd: appDir },
+          (err2, stdout2, stderr2) => {
+            if (err2) {
+              return res
+                .status(500)
+                .json({ message: "Failed to apply manifests", error: stderr2 });
+            }
+            res.json({
+              message: "Application applied",
+              output: stdout + stdout2,
+            });
+          }
+        );
       }
-      res.json({ message: "Application applied", output: stdout });
-    });
+    );
   }
 );
 
