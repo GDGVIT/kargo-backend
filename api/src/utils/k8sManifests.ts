@@ -35,6 +35,26 @@ export function generateK8sManifests(app: IApplication): {
   const sanitizedApp = stripDates(safeApp);
   const namespace = sanitizedApp.namespace || "default";
 
+  // --- Validation for duplicate ports and ingress hosts ---
+  if (sanitizedApp.ports?.length) {
+    const portSet = new Set<number>();
+    const hostSet = new Set<string>();
+    for (const p of sanitizedApp.ports) {
+      if (typeof p.containerPort !== "number") continue;
+      if (portSet.has(p.containerPort)) {
+        throw new Error(`Duplicate containerPort found: ${p.containerPort}`);
+      }
+      portSet.add(p.containerPort);
+      if (p.ingressEnabled && p.ingressHost) {
+        if (hostSet.has(p.ingressHost)) {
+          throw new Error(`Duplicate ingressHost found: ${p.ingressHost}`);
+        }
+        hostSet.add(p.ingressHost);
+      }
+    }
+  }
+  // --- End validation ---
+
   const envBlock =
     sanitizedApp.env && Object.keys(sanitizedApp.env).length > 0
       ? `          env:\n${Object.entries(sanitizedApp.env)
@@ -169,6 +189,30 @@ ${volumesBlock ? volumesBlock + "\n" : ""}${
     tolerationsBlock ? tolerationsBlock : ""
   }`;
 
+  let servicePorts = "";
+  if (sanitizedApp.ports?.length) {
+    servicePorts = sanitizedApp.ports
+      .map(
+        (
+          p: {
+            name?: string;
+            containerPort: number;
+            protocol?: string;
+            servicePort?: number;
+          },
+          idx: number
+        ) =>
+          `    - name: ${p.name || `port${idx}`}\n      protocol: ${
+            p.protocol || "TCP"
+          }\n      port: ${
+            p.servicePort || p.containerPort
+          }\n      targetPort: ${p.containerPort}`
+      )
+      .join("\n");
+  } else {
+    servicePorts = `    - protocol: TCP\n      port: 80\n      targetPort: 3000`;
+  }
+
   const service = `---
 apiVersion: v1
 kind: Service
@@ -179,9 +223,7 @@ spec:
   selector:
     app: ${sanitizedApp.name}
   ports:
-    - protocol: TCP
-      port: 80
-      targetPort: ${sanitizedApp.ports?.[0]?.containerPort || 3000}`;
+${servicePorts}`;
 
   // Single Ingress resource with multiple rules/hosts
   const ingressPorts = (sanitizedApp.ports || []).filter(
