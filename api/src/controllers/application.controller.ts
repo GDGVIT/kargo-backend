@@ -36,11 +36,11 @@ function buildIngressHost({
   subdomain?: string;
 }) {
   const baseDomain = getBaseDomain();
-  if (subdomain && subdomain.trim() !== "") {
-    return `${formatK8sName(subdomain)}.${formatK8sName(
-      username
-    )}.${baseDomain}`;
+  if (typeof subdomain === "string" && subdomain.trim() !== "") {
+    // Always use the provided subdomain if it is a non-empty string
+    return `${formatK8sName(subdomain)}.${baseDomain}`;
   }
+  // Fallback to username if no subdomain is provided
   return `${formatK8sName(username)}.${baseDomain}`;
 }
 
@@ -87,15 +87,35 @@ export const createApplication = asyncHandler(
     const serviceName = getResourceName("svc", name);
 
     const updatedPorts = ports.map((port: any, idx: number) => {
+      // Ensure subdomain is always a string and trimmed
+      const subdomain =
+        typeof port.subdomain === "string"
+          ? port.subdomain.trim()
+          : port.subdomain !== undefined && port.subdomain !== null
+          ? String(port.subdomain).trim()
+          : "";
       if (port.ingressEnabled) {
         const host = buildIngressHost({
           username,
-          subdomain: port.subdomain,
+          subdomain,
         });
-        return { ...port, ingressHost: host };
+        return { ...port, subdomain, ingressHost: host };
       }
-      return port;
+      return { ...port, subdomain };
     });
+
+    // Validate unique ingressHost for ports with ingressEnabled
+    const ingressHosts = new Set();
+    for (const port of updatedPorts) {
+      if (port.ingressEnabled && port.ingressHost) {
+        if (ingressHosts.has(port.ingressHost)) {
+          return res.status(400).json({
+            message: `Duplicate ingressHost found: ${port.ingressHost}. Each port with ingress enabled must have a unique subdomain.`,
+          });
+        }
+        ingressHosts.add(port.ingressHost);
+      }
+    }
 
     const app = await Application.create({
       name,
@@ -168,15 +188,35 @@ export const updateApplication = asyncHandler(
     const serviceName = getResourceName("svc", name);
 
     const updatedPorts = ports.map((port: any, idx: number) => {
+      // Ensure subdomain is always a string and trimmed
+      const subdomain =
+        typeof port.subdomain === "string"
+          ? port.subdomain.trim()
+          : port.subdomain !== undefined && port.subdomain !== null
+          ? String(port.subdomain).trim()
+          : "";
       if (port.ingressEnabled) {
         const host = buildIngressHost({
           username,
-          subdomain: port.subdomain,
+          subdomain,
         });
-        return { ...port, ingressHost: host };
+        return { ...port, subdomain, ingressHost: host };
       }
-      return port;
+      return { ...port, subdomain };
     });
+
+    // Validate unique ingressHost for ports with ingressEnabled
+    const ingressHosts = new Set();
+    for (const port of updatedPorts) {
+      if (port.ingressEnabled && port.ingressHost) {
+        if (ingressHosts.has(port.ingressHost)) {
+          return res.status(400).json({
+            message: `Duplicate ingressHost found: ${port.ingressHost}. Each port with ingress enabled must have a unique subdomain.`,
+          });
+        }
+        ingressHosts.add(port.ingressHost);
+      }
+    }
 
     if (resources) {
       const userId = owner;
