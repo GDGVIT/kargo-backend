@@ -348,3 +348,20 @@ ${servicePorts}`;
     secretYaml: secretYaml || undefined,
   };
 }
+
+export function generateRoleBindingYaml(namespace: string): string {
+  return `apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kargo-backend-rb
+  namespace: ${namespace}
+subjects:
+  - kind: ServiceAccount
+    name: kargo-backend-sa
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: kargo-backend-namespace-manager
+  apiGroup: rbac.authorization.k8s.io
+`;
+}

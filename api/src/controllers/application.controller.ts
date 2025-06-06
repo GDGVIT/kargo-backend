@@ -4,7 +4,10 @@ import path from "path";
 import { exec } from "child_process";
 import Application from "../models/application.model";
 import { asyncHandler } from "../utils/asyncHandler";
-import { generateK8sManifests } from "../utils/k8sManifests";
+import {
+  generateK8sManifests,
+  generateRoleBindingYaml,
+} from "../utils/k8sManifests";
 
 function formatK8sName(base: string) {
   return base
@@ -333,6 +336,12 @@ export const applyApplication = asyncHandler(
 
     const { deploymentYaml, serviceYaml, ingressYaml, secretYaml } =
       generateK8sManifests(app);
+    if (!app.namespace) {
+      return res
+        .status(500)
+        .json({ message: "Application namespace is undefined" });
+    }
+    const roleBindingYaml = generateRoleBindingYaml(app.namespace);
 
     fs.writeFileSync(
       path.join(appDir, "namespace.yaml"),
@@ -343,8 +352,9 @@ export const applyApplication = asyncHandler(
     fs.writeFileSync(path.join(appDir, "service.yaml"), serviceYaml);
     if (ingressYaml)
       fs.writeFileSync(path.join(appDir, "ingress.yaml"), ingressYaml);
+    fs.writeFileSync(path.join(appDir, "rolebinding.yaml"), roleBindingYaml);
 
-    // Apply namespace first, then secret, then the rest
+    // Apply namespace first, then RoleBinding, then secret, then the rest
     exec(
       `kubectl apply -f namespace.yaml`,
       { cwd: appDir },
@@ -354,6 +364,7 @@ export const applyApplication = asyncHandler(
             .status(500)
             .json({ message: "Failed to apply namespace", error: stderrNs });
         }
+
         exec(
           `kubectl apply -f secret.yaml`,
           { cwd: appDir },
@@ -383,7 +394,7 @@ export const applyApplication = asyncHandler(
                 }
                 res.json({
                   message: "Application applied",
-                  output: stdoutNs + stdout + stdout2,
+                  output: stdoutNs + stdout2,
                 });
               }
             );
