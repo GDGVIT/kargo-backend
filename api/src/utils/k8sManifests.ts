@@ -26,6 +26,182 @@ function stripDates(obj: any): any {
   return internalStrip(obj);
 }
 
+function generateIngressYaml(sanitizedApp: any, namespace: string): string {
+  const ingressPorts = (sanitizedApp.ports || []).filter(
+    (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
+  );
+  if (ingressPorts.length === 0) return "";
+  const rules = ingressPorts
+    .map((p: any) => {
+      let host = p.subdomain;
+      if (host.endsWith(".")) host = host.slice(0, -1);
+      return [
+        `    - host: ${host}`,
+        `      http:`,
+        `        paths:`,
+        `          - path: /`,
+        `            pathType: Prefix`,
+        `            backend:`,
+        `              service:`,
+        `                name: ${sanitizedApp.serviceName}`,
+        `                port:`,
+        `                  number: ${p.containerPort}`,
+      ].join("\n");
+    })
+    .join("\n");
+  return [
+    `---`,
+    `apiVersion: networking.k8s.io/v1`,
+    `kind: Ingress`,
+    `metadata:`,
+    `  name: ${sanitizedApp.name}-ingress`,
+    `  namespace: ${namespace}`,
+    `  annotations:`,
+    `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
+    `    nginx.ingress.kubernetes.io/ssl-redirect: "false"`,
+    `spec:`,
+    `  rules:`,
+    rules,
+  ].join("\n");
+}
+
+function generateEnvBlock(env: Record<string, string> | undefined): string {
+  if (!env || Object.keys(env).length === 0) return "";
+  return (
+    `          env:\n` +
+    Object.entries(env)
+      .map(
+        ([key, value]) =>
+          `            - name: ${key}\n              value: "${value}"`
+      )
+      .join("\n")
+  );
+}
+
+function generateResourcesBlock(resources: any): string {
+  if (!resources) return "";
+  return `          resources:
+            requests:
+              cpu: "${resources.requests?.cpu || "100m"}"
+              memory: "${resources.requests?.memory || "128Mi"}"
+            limits:
+              cpu: "${resources.limits?.cpu || "250m"}"
+              memory: "${resources.limits?.memory || "256Mi"}"`;
+}
+
+function generateVolumeMountsBlock(volumes: any[]): string {
+  if (!volumes?.length) return "";
+  return (
+    `          volumeMounts:\n` +
+    volumes
+      .map(
+        (v: { name: string; mountPath: string }) =>
+          `            - name: ${v.name}\n              mountPath: ${v.mountPath}`
+      )
+      .join("\n")
+  );
+}
+
+function generateVolumesBlock(volumes: any[]): string {
+  if (!volumes?.length) return "";
+  return (
+    `      volumes:\n` +
+    volumes
+      .map(
+        (v: { name: string; pvcName: string }) =>
+          `        - name: ${v.name}\n          persistentVolumeClaim:\n            claimName: ${v.pvcName}`
+      )
+      .join("\n")
+  );
+}
+
+function generatePortsBlock(ports: any[]): string {
+  if (!ports?.length) return "";
+  return (
+    `          ports:\n` +
+    ports
+      .map(
+        (
+          p: { name?: string; containerPort: number; protocol?: string },
+          idx: number
+        ) =>
+          `            - name: port${idx}` +
+          `\n              containerPort: ${p.containerPort}` +
+          `\n              protocol: ${p.protocol || "TCP"}`
+      )
+      .join("\n")
+  );
+}
+
+function generateCommandBlock(command: string[] | undefined): string {
+  if (!command?.length) return "";
+  return `          command: ${JSON.stringify(command)}`;
+}
+
+function generateArgsBlock(args: string[] | undefined): string {
+  if (!args?.length) return "";
+  return `          args: ${JSON.stringify(args)}`;
+}
+
+function generateProbeBlock(
+  type: "readinessProbe" | "livenessProbe",
+  probe: any
+): string {
+  if (!probe) return "";
+  return `          ${type}:\n${dump(stripDates(probe), {
+    noRefs: true,
+    skipInvalid: true,
+  })
+    .split("\n")
+    .map((line) => `            ${line}`)
+    .join("\n")}`;
+}
+
+function generateAffinityBlock(affinity: any): string {
+  if (!affinity) return "";
+  return `          affinity:\n${dump(stripDates(affinity), {
+    noRefs: true,
+    skipInvalid: true,
+  })
+    .split("\n")
+    .map((line) => `            ${line}`)
+    .join("\n")}`;
+}
+
+function generateTolerationsBlock(tolerations: any[]): string {
+  if (!tolerations?.length) return "";
+  return `      tolerations:\n${dump(stripDates(tolerations), {
+    noRefs: true,
+    skipInvalid: true,
+  })
+    .split("\n")
+    .map((line) => `        ${line}`)
+    .join("\n")}`;
+}
+
+function generateServicePortsBlock(ports: any[]): string {
+  if (!ports?.length)
+    return `    - protocol: TCP\n      port: 80\n      targetPort: 3000`;
+  return ports
+    .map(
+      (
+        p: {
+          name?: string;
+          containerPort: number;
+          protocol?: string;
+          servicePort?: number;
+        },
+        idx: number
+      ) =>
+        `    - name: port${idx}\n      protocol: ${
+          p.protocol || "TCP"
+        }\n      port: ${p.servicePort || p.containerPort}\n      targetPort: ${
+          p.containerPort
+        }`
+    )
+    .join("\n");
+}
+
 export function generateK8sManifests(app: IApplication): {
   deploymentYaml: string;
   serviceYaml: string;
@@ -35,7 +211,6 @@ export function generateK8sManifests(app: IApplication): {
   const sanitizedApp = stripDates(safeApp);
   const namespace = sanitizedApp.namespace || "default";
 
-  // --- Validation for duplicate ports ---
   if (sanitizedApp.ports?.length) {
     const portSet = new Set<number>();
     for (const p of sanitizedApp.ports) {
@@ -46,113 +221,24 @@ export function generateK8sManifests(app: IApplication): {
       portSet.add(p.containerPort);
     }
   }
-  // --- End validation ---
 
-  const envBlock =
-    sanitizedApp.env && Object.keys(sanitizedApp.env).length > 0
-      ? `          env:\n${Object.entries(sanitizedApp.env)
-          .map(
-            ([key, value]) =>
-              `            - name: ${key}\n              value: "${value}"`
-          )
-          .join("\n")}`
-      : "";
-
-  const resourcesBlock = sanitizedApp.resources
-    ? `          resources:
-            requests:
-              cpu: "${sanitizedApp.resources.requests?.cpu || "100m"}"
-              memory: "${sanitizedApp.resources.requests?.memory || "128Mi"}"
-            limits:
-              cpu: "${sanitizedApp.resources.limits?.cpu || "250m"}"
-              memory: "${sanitizedApp.resources.limits?.memory || "256Mi"}"`
-    : "";
-
-  const volumeMountsBlock = sanitizedApp.volumes?.length
-    ? `          volumeMounts:\n${sanitizedApp.volumes
-        .map(
-          (v: { name: string; mountPath: string }) =>
-            `            - name: ${v.name}\n              mountPath: ${v.mountPath}`
-        )
-        .join("\n")}`
-    : "";
-
-  const volumesBlock = sanitizedApp.volumes?.length
-    ? `      volumes:\n${sanitizedApp.volumes
-        .map(
-          (v: { name: string; pvcName: string }) =>
-            `        - name: ${v.name}\n          persistentVolumeClaim:\n            claimName: ${v.pvcName}`
-        )
-        .join("\n")}`
-    : "";
-
-  const portsBlock = sanitizedApp.ports?.length
-    ? `          ports:\n${sanitizedApp.ports
-        .map(
-          (
-            p: { name?: string; containerPort: number; protocol?: string },
-            idx: number
-          ) =>
-            `            - name: port${idx}` +
-            `\n              containerPort: ${p.containerPort}` +
-            `\n              protocol: ${p.protocol || "TCP"}`
-        )
-        .join("\n")}`
-    : "";
-
-  const commandBlock = sanitizedApp.command?.length
-    ? `          command: ${JSON.stringify(sanitizedApp.command)}`
-    : "";
-
-  const argsBlock = sanitizedApp.args?.length
-    ? `          args: ${JSON.stringify(sanitizedApp.args)}`
-    : "";
-
-  const readinessProbeBlock = sanitizedApp.readinessProbe
-    ? `          readinessProbe:\n${dump(
-        stripDates(sanitizedApp.readinessProbe),
-        {
-          noRefs: true,
-          skipInvalid: true,
-        }
-      )
-        .split("\n")
-        .map((line) => `            ${line}`)
-        .join("\n")}`
-    : "";
-
-  const livenessProbeBlock = sanitizedApp.livenessProbe
-    ? `          livenessProbe:\n${dump(
-        stripDates(sanitizedApp.livenessProbe),
-        {
-          noRefs: true,
-          skipInvalid: true,
-        }
-      )
-        .split("\n")
-        .map((line) => `            ${line}`)
-        .join("\n")}`
-    : "";
-
-  const affinityBlock = sanitizedApp.affinity
-    ? `          affinity:\n${dump(stripDates(sanitizedApp.affinity), {
-        noRefs: true,
-        skipInvalid: true,
-      })
-        .split("\n")
-        .map((line) => `            ${line}`)
-        .join("\n")}`
-    : "";
-
-  const tolerationsBlock = sanitizedApp.tolerations?.length
-    ? `      tolerations:\n${dump(stripDates(sanitizedApp.tolerations), {
-        noRefs: true,
-        skipInvalid: true,
-      })
-        .split("\n")
-        .map((line) => `        ${line}`)
-        .join("\n")}`
-    : "";
+  const envBlock = generateEnvBlock(sanitizedApp.env);
+  const resourcesBlock = generateResourcesBlock(sanitizedApp.resources);
+  const volumeMountsBlock = generateVolumeMountsBlock(sanitizedApp.volumes);
+  const volumesBlock = generateVolumesBlock(sanitizedApp.volumes);
+  const portsBlock = generatePortsBlock(sanitizedApp.ports);
+  const commandBlock = generateCommandBlock(sanitizedApp.command);
+  const argsBlock = generateArgsBlock(sanitizedApp.args);
+  const readinessProbeBlock = generateProbeBlock(
+    "readinessProbe",
+    sanitizedApp.readinessProbe
+  );
+  const livenessProbeBlock = generateProbeBlock(
+    "livenessProbe",
+    sanitizedApp.livenessProbe
+  );
+  const affinityBlock = generateAffinityBlock(sanitizedApp.affinity);
+  const tolerationsBlock = generateTolerationsBlock(sanitizedApp.tolerations);
 
   const deployment = `apiVersion: apps/v1
 kind: Deployment
@@ -185,29 +271,7 @@ ${volumesBlock ? volumesBlock + "\n" : ""}${
     tolerationsBlock ? tolerationsBlock : ""
   }`;
 
-  let servicePorts = "";
-  if (sanitizedApp.ports?.length) {
-    servicePorts = sanitizedApp.ports
-      .map(
-        (
-          p: {
-            name?: string;
-            containerPort: number;
-            protocol?: string;
-            servicePort?: number;
-          },
-          idx: number
-        ) =>
-          `    - name: port${idx}\n      protocol: ${
-            p.protocol || "TCP"
-          }\n      port: ${
-            p.servicePort || p.containerPort
-          }\n      targetPort: ${p.containerPort}`
-      )
-      .join("\n");
-  } else {
-    servicePorts = `    - protocol: TCP\n      port: 80\n      targetPort: 3000`;
-  }
+  const servicePorts = generateServicePortsBlock(sanitizedApp.ports);
 
   const service = `---
 apiVersion: v1
@@ -221,45 +285,7 @@ spec:
   ports:
 ${servicePorts}`;
 
-  // Ingress generation: one Ingress with multiple rules, one per port with a subdomain
-  let ingressYaml = "";
-  const ingressPorts = (sanitizedApp.ports || []).filter(
-    (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
-  );
-  if (ingressPorts.length > 0) {
-    const rules = ingressPorts
-      .map((p: any) => {
-        let host = p.subdomain;
-        if (host.endsWith(".")) host = host.slice(0, -1);
-        return [
-          `    - host: ${host}`,
-          `      http:`,
-          `        paths:`,
-          `          - path: /`,
-          `            pathType: Prefix`,
-          `            backend:`,
-          `              service:`,
-          `                name: ${sanitizedApp.serviceName}`,
-          `                port:`,
-          `                  number: ${p.containerPort}`,
-        ].join("\n");
-      })
-      .join("\n");
-    ingressYaml = [
-      `---`,
-      `apiVersion: networking.k8s.io/v1`,
-      `kind: Ingress`,
-      `metadata:`,
-      `  name: ${sanitizedApp.name}-ingress`,
-      `  namespace: ${namespace}`,
-      `  annotations:`,
-      `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
-      `    nginx.ingress.kubernetes.io/ssl-redirect: "false"`,
-      `spec:`,
-      `  rules:`,
-      rules,
-    ].join("\n");
-  }
+  const ingressYaml = generateIngressYaml(sanitizedApp, namespace);
 
   return {
     deploymentYaml: deployment,

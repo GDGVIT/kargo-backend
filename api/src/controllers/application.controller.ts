@@ -37,10 +37,9 @@ function buildIngressHost({
 }) {
   const baseDomain = getBaseDomain();
   if (typeof subdomain === "string" && subdomain.trim() !== "") {
-    // Always use the provided subdomain if it is a non-empty string
     return `${formatK8sName(subdomain)}.${baseDomain}`;
   }
-  // Fallback to username if no subdomain is provided
+
   return `${formatK8sName(username)}.${baseDomain}`;
 }
 
@@ -81,7 +80,6 @@ export const createApplication = asyncHandler(
     const deploymentName = getResourceName("deploy", name);
     const serviceName = getResourceName("svc", name);
 
-    // Only keep allowed port fields
     const username = (req.user as any)?.username || req.body.username || "user";
     const baseDomain = getBaseDomain();
     const updatedPorts = ports.map((port: any, idx: number) => {
@@ -92,7 +90,6 @@ export const createApplication = asyncHandler(
           ? String(port.subdomain).trim()
           : "";
       if (subdomain) {
-        // Only append username and baseDomain if not already present
         const fqdn = `${formatK8sName(subdomain)}.${formatK8sName(
           username
         )}.${baseDomain}`;
@@ -102,7 +99,6 @@ export const createApplication = asyncHandler(
         ) {
           subdomain = fqdn;
         }
-        // else, use as-is (already fully qualified)
       }
       return {
         name: `port${idx}`,
@@ -177,7 +173,6 @@ export const updateApplication = asyncHandler(
     const deploymentName = getResourceName("deploy", name);
     const serviceName = getResourceName("svc", name);
 
-    // Only keep allowed port fields
     const username = (req.user as any)?.username || req.body.username || "user";
     const baseDomain = getBaseDomain();
     const updatedPorts = ports.map((port: any, idx: number) => {
@@ -188,7 +183,6 @@ export const updateApplication = asyncHandler(
           ? String(port.subdomain).trim()
           : "";
       if (subdomain) {
-        // Only append username and baseDomain if not already present
         const fqdn = `${formatK8sName(subdomain)}.${formatK8sName(
           username
         )}.${baseDomain}`;
@@ -198,7 +192,6 @@ export const updateApplication = asyncHandler(
         ) {
           subdomain = fqdn;
         }
-        // else, use as-is (already fully qualified)
       }
       return {
         name: `port${idx}`,

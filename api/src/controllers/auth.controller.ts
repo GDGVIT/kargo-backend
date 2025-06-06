@@ -58,7 +58,6 @@ export const register = async (
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    // Assign BASE plan by default
     const basePlan = await Plan.findOne({ isDefault: true });
 
     const newUser = await User.create({
@@ -149,7 +148,6 @@ export const googleCallback = [
 
 export const getMe = async (req: Request, res: Response) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
-    // Populate the plan field
     const user = await User.findById((req.user as any)._id).populate("plan");
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json({ user: sanitizeUser(user) });

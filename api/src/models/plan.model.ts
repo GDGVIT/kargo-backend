@@ -13,8 +13,8 @@ export interface IPlan extends Document {
       memory?: string;
     };
   };
-  isDefault?: boolean; // true for BASE plan
-  price?: number; // for future use
+  isDefault?: boolean;
+  price?: number;
   isActive?: boolean;
 }
 

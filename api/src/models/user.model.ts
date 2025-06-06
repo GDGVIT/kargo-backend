@@ -36,7 +36,7 @@ export interface IUser extends Document {
       memory?: string;
     };
   };
-  plan?: string; // Plan ID reference
+  plan?: string;
 }
 
 const oauthSchema = new Schema<IOAuth>(

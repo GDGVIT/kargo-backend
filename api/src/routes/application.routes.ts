@@ -5,7 +5,7 @@ import {
   getApplication,
   updateApplication,
   deleteApplication,
-  applyApplication, // <-- add import
+  applyApplication,
   removeDeployment,
   removeNamespace,
 } from "../controllers/application.controller";
@@ -20,7 +20,7 @@ router.get("/", getApplications);
 router.get("/:id", getApplication);
 router.put("/:id", updateApplication);
 router.delete("/:id", deleteApplication);
-router.post("/:id/apply", applyApplication); // <-- add route
+router.post("/:id/apply", applyApplication);
 router.post("/:id/remove-deployment", removeDeployment);
 router.post("/:id/remove-namespace", removeNamespace);
 
