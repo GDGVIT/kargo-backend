@@ -387,14 +387,32 @@ export const applyApplication = asyncHandler(
               { cwd: appDir },
               (err2, stdout2, stderr2) => {
                 if (err2) {
+                  // Read all manifest files for debugging
+                  const manifestFiles = [
+                    "namespace.yaml",
+                    "rolebinding.yaml",
+                    "secret.yaml",
+                    "deployment.yaml",
+                    "service.yaml",
+                    "ingress.yaml",
+                  ];
+                  const manifests: Record<string, string> = {};
+                  for (const file of manifestFiles) {
+                    const filePath = path.join(appDir, file);
+                    if (fs.existsSync(filePath)) {
+                      manifests[file] = fs.readFileSync(filePath, "utf8");
+                    }
+                  }
                   return res.status(500).json({
                     message: "Failed to apply manifests",
                     error: stderr2,
+                    output: stdout2,
+                    manifests,
                   });
                 }
                 res.json({
                   message: "Application applied",
-                  output: stdoutNs + stdout2,
+                  output: stdoutNs + stdout2 + stdout + stdout2,
                 });
               }
             );
