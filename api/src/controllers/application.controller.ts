@@ -22,24 +22,26 @@ function getResourceName(type: string, appName: string) {
   return `${type}-${formatK8sName(appName)}`;
 }
 
-const INGRESS_BASE_DOMAIN = process.env.INGRESS_BASE_DOMAIN || ".vitians.in";
+const getBaseDomain = () => {
+  let domain = process.env.INGRESS_BASE_DOMAIN || ".vitians.in";
+  if (domain.startsWith(".")) domain = domain.slice(1);
+  return domain;
+};
 
 function buildIngressHost({
-  name,
   username,
-  domainPrefix,
+  subdomain,
 }: {
-  name: string;
   username: string;
-  domainPrefix?: string;
+  subdomain?: string;
 }) {
-  const prefix =
-    domainPrefix && domainPrefix.trim() !== ""
-      ? `${formatK8sName(domainPrefix)}-`
-      : "";
-  return `${prefix}${formatK8sName(name)}-${formatK8sName(
-    username
-  )}${INGRESS_BASE_DOMAIN}`;
+  const baseDomain = getBaseDomain();
+  if (subdomain && subdomain.trim() !== "") {
+    return `${formatK8sName(subdomain)}.${formatK8sName(
+      username
+    )}.${baseDomain}`;
+  }
+  return `${formatK8sName(username)}.${baseDomain}`;
 }
 
 function buildSubdomainHost({
@@ -51,7 +53,7 @@ function buildSubdomainHost({
 }) {
   return `${formatK8sName(subdomain)}-${formatK8sName(
     username
-  )}${INGRESS_BASE_DOMAIN}`;
+  )}.${getBaseDomain()}`;
 }
 
 export const createApplication = asyncHandler(
@@ -84,14 +86,12 @@ export const createApplication = asyncHandler(
     const deploymentName = getResourceName("deploy", name);
     const serviceName = getResourceName("svc", name);
 
-    const updatedPorts = ports.map((port: any) => {
+    const updatedPorts = ports.map((port: any, idx: number) => {
       if (port.ingressEnabled) {
-        const host =
-          port.subdomain && port.subdomain.trim() !== ""
-            ? `${formatK8sName(port.subdomain)}-${formatK8sName(
-                username
-              )}${INGRESS_BASE_DOMAIN}`
-            : `${formatK8sName(username)}${INGRESS_BASE_DOMAIN}`;
+        const host = buildIngressHost({
+          username,
+          subdomain: port.subdomain,
+        });
         return { ...port, ingressHost: host };
       }
       return port;
@@ -167,14 +167,12 @@ export const updateApplication = asyncHandler(
     const deploymentName = getResourceName("deploy", name);
     const serviceName = getResourceName("svc", name);
 
-    const updatedPorts = ports.map((port: any) => {
+    const updatedPorts = ports.map((port: any, idx: number) => {
       if (port.ingressEnabled) {
-        const host =
-          port.subdomain && port.subdomain.trim() !== ""
-            ? `${formatK8sName(port.subdomain)}-${formatK8sName(
-                username
-              )}${INGRESS_BASE_DOMAIN}`
-            : `${formatK8sName(username)}${INGRESS_BASE_DOMAIN}`;
+        const host = buildIngressHost({
+          username,
+          subdomain: port.subdomain,
+        });
         return { ...port, ingressHost: host };
       }
       return port;
@@ -342,5 +340,42 @@ export const applyApplication = asyncHandler(
         });
       }
     );
+  }
+);
+
+export const removeDeployment = asyncHandler(
+  async (req: Request, res: Response) => {
+    const app = await Application.findById(req.params.id);
+    if (!app) return res.status(404).json({ message: "Application not found" });
+    const userId = (app.owner as any).toString();
+    const appId = (app._id as any).toString();
+    const manifestsDir = process.env.MANIFESTS_DIR;
+    if (!manifestsDir)
+      return res.status(500).json({ message: "MANIFESTS_DIR not set in env" });
+    const appDir = path.join(manifestsDir, userId, appId);
+    exec(`kubectl delete -f .`, { cwd: appDir }, (err, stdout, stderr) => {
+      if (err) {
+        return res
+          .status(500)
+          .json({ message: "Failed to remove deployment", error: stderr });
+      }
+      res.json({ message: "Deployment removed", output: stdout });
+    });
+  }
+);
+
+export const removeNamespace = asyncHandler(
+  async (req: Request, res: Response) => {
+    const app = await Application.findById(req.params.id);
+    if (!app) return res.status(404).json({ message: "Application not found" });
+    const namespace = app.namespace;
+    exec(`kubectl delete namespace ${namespace}`, (err, stdout, stderr) => {
+      if (err) {
+        return res
+          .status(500)
+          .json({ message: "Failed to remove namespace", error: stderr });
+      }
+      res.json({ message: "Namespace removed", output: stdout });
+    });
   }
 );

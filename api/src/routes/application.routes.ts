@@ -6,6 +6,8 @@ import {
   updateApplication,
   deleteApplication,
   applyApplication, // <-- add import
+  removeDeployment,
+  removeNamespace,
 } from "../controllers/application.controller";
 import { ensureAuthenticated } from "./auth.routes";
 
@@ -19,5 +21,7 @@ router.get("/:id", getApplication);
 router.put("/:id", updateApplication);
 router.delete("/:id", deleteApplication);
 router.post("/:id/apply", applyApplication); // <-- add route
+router.post("/:id/remove-deployment", removeDeployment);
+router.post("/:id/remove-namespace", removeNamespace);
 
 export default router;
