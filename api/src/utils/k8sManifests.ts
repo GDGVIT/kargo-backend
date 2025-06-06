@@ -56,6 +56,8 @@ function generateIngressYaml(sanitizedApp: any, namespace: string): string {
     `metadata:`,
     `  name: ${sanitizedApp.name}-ingress`,
     `  namespace: ${namespace}`,
+    `  labels:`,
+    `    app: ${sanitizedApp.name}`,
     `  annotations:`,
     `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
     `    nginx.ingress.kubernetes.io/ssl-redirect: "false"`,
@@ -299,6 +301,8 @@ kind: Deployment
 metadata:
   name: ${sanitizedApp.deploymentName}
   namespace: ${namespace}
+  labels:
+    app: ${sanitizedApp.name}
 spec:
   replicas: 1
   selector:
@@ -333,13 +337,59 @@ kind: Service
 metadata:
   name: ${sanitizedApp.serviceName}
   namespace: ${namespace}
+  labels:
+    app: ${sanitizedApp.name}
 spec:
   selector:
     app: ${sanitizedApp.name}
   ports:
 ${servicePorts}`;
 
-  const ingressYaml = generateIngressYaml(sanitizedApp, namespace);
+  const ingressYaml = (() => {
+    if (
+      !sanitizedApp.ports?.some(
+        (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
+      )
+    )
+      return "";
+    const ingressPorts = sanitizedApp.ports.filter(
+      (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
+    );
+    const rules = ingressPorts
+      .map((p: any) => {
+        let host = p.subdomain;
+        if (host.endsWith(".")) host = host.slice(0, -1);
+        return [
+          `    - host: ${host}`,
+          `      http:`,
+          `        paths:`,
+          `          - path: /`,
+          `            pathType: Prefix`,
+          `            backend:`,
+          `              service:`,
+          `                name: ${sanitizedApp.serviceName}`,
+          `                port:`,
+          `                  number: ${p.containerPort}`,
+        ].join("\n");
+      })
+      .join("\n");
+    return [
+      `---`,
+      `apiVersion: networking.k8s.io/v1`,
+      `kind: Ingress`,
+      `metadata:`,
+      `  name: ${sanitizedApp.name}-ingress`,
+      `  namespace: ${namespace}`,
+      `  labels:`,
+      `    app: ${sanitizedApp.name}`,
+      `  annotations:`,
+      `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
+      `    nginx.ingress.kubernetes.io/ssl-redirect: "false"`,
+      `spec:`,
+      `  rules:`,
+      rules,
+    ].join("\n");
+  })();
 
   return {
     deploymentYaml: deployment,
