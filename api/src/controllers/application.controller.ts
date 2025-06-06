@@ -343,6 +343,9 @@ export const applyApplication = asyncHandler(
     }
     const roleBindingYaml = generateRoleBindingYaml(app.namespace);
 
+    // Log manifest directory and file paths
+    console.log("[applyApplication] appDir:", appDir);
+
     fs.writeFileSync(
       path.join(appDir, "namespace.yaml"),
       `apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ${app.namespace}\n`
@@ -354,12 +357,32 @@ export const applyApplication = asyncHandler(
       fs.writeFileSync(path.join(appDir, "ingress.yaml"), ingressYaml);
     fs.writeFileSync(path.join(appDir, "rolebinding.yaml"), roleBindingYaml);
 
+    // Log manifest contents
+    const manifestFiles = [
+      "namespace.yaml",
+      "rolebinding.yaml",
+      "secret.yaml",
+      "deployment.yaml",
+      "service.yaml",
+      "ingress.yaml",
+    ];
+    for (const file of manifestFiles) {
+      const filePath = path.join(appDir, file);
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, "utf8");
+        console.log(`[applyApplication] ${file} content:\n`, content);
+      }
+    }
+
     // Apply namespace first, then RoleBinding, then secret, then the rest
     exec(
       `kubectl apply -f namespace.yaml`,
       { cwd: appDir },
       (errNs, stdoutNs, stderrNs) => {
+        console.log("[applyApplication] namespace apply stdout:\n", stdoutNs);
+        console.log("[applyApplication] namespace apply stderr:\n", stderrNs);
         if (errNs) {
+          console.error("[applyApplication] namespace apply error:", errNs);
           return res
             .status(500)
             .json({ message: "Failed to apply namespace", error: stderrNs });
@@ -369,13 +392,18 @@ export const applyApplication = asyncHandler(
           `kubectl apply -f secret.yaml`,
           { cwd: appDir },
           (err, stdout, stderr) => {
+            console.log("[applyApplication] secret apply stdout:\n", stdout);
+            console.log("[applyApplication] secret apply stderr:\n", stderr);
             if (err) {
               const secretContent = fs.readFileSync(
                 path.join(appDir, "secret.yaml"),
                 "utf8"
               );
-              console.error("Failed to apply secret:", stderr);
-              console.error("Secret manifest content:\n", secretContent);
+              console.error("[applyApplication] secret apply error:", err);
+              console.error(
+                "[applyApplication] secret manifest content:\n",
+                secretContent
+              );
               return res.status(500).json({
                 message: "Failed to apply secret",
                 error: stderr,
@@ -386,16 +414,16 @@ export const applyApplication = asyncHandler(
               `kubectl apply -f . --prune -l app=${app.name} --field-manager=application-controller`,
               { cwd: appDir },
               (err2, stdout2, stderr2) => {
+                console.log(
+                  "[applyApplication] manifests apply stdout:\n",
+                  stdout2
+                );
+                console.log(
+                  "[applyApplication] manifests apply stderr:\n",
+                  stderr2
+                );
                 if (err2) {
                   // Read all manifest files for debugging
-                  const manifestFiles = [
-                    "namespace.yaml",
-                    "rolebinding.yaml",
-                    "secret.yaml",
-                    "deployment.yaml",
-                    "service.yaml",
-                    "ingress.yaml",
-                  ];
                   const manifests: Record<string, string> = {};
                   for (const file of manifestFiles) {
                     const filePath = path.join(appDir, file);
@@ -403,6 +431,10 @@ export const applyApplication = asyncHandler(
                       manifests[file] = fs.readFileSync(filePath, "utf8");
                     }
                   }
+                  console.error(
+                    "[applyApplication] manifests apply error:",
+                    err2
+                  );
                   return res.status(500).json({
                     message: "Failed to apply manifests",
                     error: stderr2,
