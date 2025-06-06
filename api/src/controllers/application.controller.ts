@@ -8,7 +8,6 @@ import {
   generateK8sManifests,
   generateRoleBindingYaml,
 } from "../utils/k8sManifests";
-import rimraf from "rimraf";
 
 function formatK8sName(base: string) {
   return base
@@ -516,7 +515,8 @@ export const deleteApplicationAndResources = asyncHandler(
 
     // Remove manifests folder
     if (appDir && fs.existsSync(appDir)) {
-      rimraf.sync(appDir);
+      const { rimraf } = await import("rimraf");
+      await rimraf(appDir);
     }
 
     // Remove from DB
