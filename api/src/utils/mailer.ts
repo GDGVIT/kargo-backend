@@ -12,25 +12,29 @@ export const transporter = nodemailer.createTransport({
 
 const FROM_ADDRESS = process.env.SMTP_FROM;
 
-export async function sendVerificationEmail({
+export async function sendMail({
   to,
-  token,
-  domain,
+  subject,
+  html,
+  text,
+  from = FROM_ADDRESS,
 }: {
   to: string;
-  token: string;
-  domain: string;
+  subject: string;
+  html?: string;
+  text?: string;
+  from?: string;
 }) {
-  const verifyUrl = `${domain}/auth/verify-email?token=${token}`;
   try {
     await transporter.sendMail({
-      from: FROM_ADDRESS,
+      from,
       to,
-      subject: "Verify your email address",
-      html: `<p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+      subject,
+      html,
+      text,
     });
   } catch (err) {
-    console.error("Failed to send verification email:", err);
-    throw new Error("Failed to send verification email.");
+    console.error("Failed to send email:", err);
+    throw new Error("Failed to send email.");
   }
 }

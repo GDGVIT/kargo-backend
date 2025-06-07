@@ -4,7 +4,7 @@ import passport from "passport";
 import crypto from "crypto";
 import User from "../models/user.model";
 import Plan from "../models/plan.model";
-import { sendVerificationEmail } from "../utils/mailer";
+import { sendVerificationEmail } from "../utils/verification";
 
 function isValidUsername(username: string): boolean {
   const usernameRegex = /^[A-Za-z0-9_-]+$/;
@@ -77,6 +77,7 @@ export const register = async (
       to: email,
       token: verificationToken,
       domain: process.env.CUSTOM_DOMAIN || "http://localhost:3000",
+      name,
     });
 
     res.json({
@@ -268,6 +269,7 @@ export const resendVerification = async (req: Request, res: Response) => {
     to: user.email,
     token,
     domain: process.env.CUSTOM_DOMAIN || "http://localhost:3000",
+    name: user.name,
   });
 
   res.json({
