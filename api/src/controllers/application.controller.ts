@@ -503,17 +503,34 @@ export const deleteApplicationAndResources = asyncHandler(
     const manifestsDir = process.env.MANIFESTS_DIR;
     const appDir = manifestsDir ? path.join(manifestsDir, userId, appId) : null;
 
-    // Delete namespace and all resources in it
-    await new Promise<void>((resolve, reject) => {
-      exec(`kubectl delete namespace ${namespace}`, (err, stdout, stderr) => {
-        if (err && !(stderr && stderr.includes("not found"))) {
-          return reject(stderr);
-        }
-        resolve();
-      });
-    });
+    // Check if namespace exists before attempting to delete
+    let namespaceExists = false;
+    if (namespace) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          exec(`kubectl get namespace ${namespace}`, (err, stdout, stderr) => {
+            if (!err && stdout && stdout.includes(namespace)) {
+              namespaceExists = true;
+            }
+            resolve();
+          });
+        });
+      } catch {}
+    }
 
-    // Remove manifests folder
+    // Delete namespace and all resources in it if it exists
+    if (namespaceExists) {
+      await new Promise<void>((resolve, reject) => {
+        exec(`kubectl delete namespace ${namespace}`, (err, stdout, stderr) => {
+          if (err && !(stderr && stderr.includes("not found"))) {
+            return reject(stderr);
+          }
+          resolve();
+        });
+      });
+    }
+
+    // Remove manifests folder if it exists
     if (appDir && fs.existsSync(appDir)) {
       const { rimraf } = await import("rimraf");
       await rimraf(appDir);

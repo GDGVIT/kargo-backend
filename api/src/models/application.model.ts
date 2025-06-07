@@ -85,7 +85,19 @@ const VolumeSchema = new Schema(
 
 const applicationSchema = new Schema<IApplication>(
   {
-    name: { type: String, required: true },
+    name: {
+      type: String,
+      required: true,
+      validate: {
+        validator: function (v: string) {
+          return /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/.test(v);
+        },
+        message:
+          "Application name must be lowercase, alphanumeric, and may contain hyphens. No underscores or uppercase letters allowed. (Kubernetes DNS-1123 subdomain format)",
+      },
+      minlength: 1,
+      maxlength: 63,
+    },
     imageUrl: { type: String, required: true },
     imageTag: { type: String, required: true },
     registryToken: { type: String, required: true },
