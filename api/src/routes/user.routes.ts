@@ -6,6 +6,9 @@ import {
   updateUserRole,
   updateUserExtraResources,
   getUserResourceUsage,
+  upsertRegistryCredential,
+  deleteRegistryCredential,
+  getRegistryCredentials,
 } from "../controllers/user.controller";
 import { asyncHandler } from "../utils/asyncHandler";
 import User from "../models/user.model";
@@ -50,5 +53,10 @@ router.get(
     res.json({ users });
   })
 );
+
+// Registry credentials management
+router.get("/me/credentials", asyncHandler(getRegistryCredentials));
+router.post("/me/credentials", asyncHandler(upsertRegistryCredential));
+router.delete("/me/credentials", asyncHandler(deleteRegistryCredential));
 
 export default router;

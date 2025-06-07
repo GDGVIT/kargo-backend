@@ -5,6 +5,13 @@ export interface IOAuth {
   githubId?: string;
 }
 
+export interface IRegistryCredential {
+  name: string; // e.g. "DockerHub Personal", "GitHub PAT"
+  registryType: "dockerhub" | "github" | "gitlab" | "other";
+  username: string;
+  token: string;
+}
+
 export interface IUser extends Document {
   email: string;
   password?: string;
@@ -37,12 +44,27 @@ export interface IUser extends Document {
     };
   };
   plan?: string;
+  credentials?: IRegistryCredential[];
 }
 
 const oauthSchema = new Schema<IOAuth>(
   {
     googleId: { type: String },
     githubId: { type: String },
+  },
+  { _id: false }
+);
+
+const registryCredentialSchema = new Schema<IRegistryCredential>(
+  {
+    name: { type: String, required: true },
+    registryType: {
+      type: String,
+      enum: ["dockerhub", "github", "gitlab", "other"],
+      required: true,
+    },
+    username: { type: String, required: true },
+    token: { type: String, required: true },
   },
   { _id: false }
 );
@@ -84,6 +106,7 @@ const userSchema = new Schema<IUser>(
       },
     },
     plan: { type: Schema.Types.ObjectId, ref: "Plan", default: null },
+    credentials: { type: [registryCredentialSchema], default: [] },
   },
   { timestamps: true }
 );
