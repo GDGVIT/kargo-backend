@@ -4,10 +4,7 @@ import path from "path";
 import { exec, spawn } from "child_process";
 import Application from "../models/application.model";
 import { asyncHandler } from "../utils/asyncHandler";
-import {
-  generateK8sManifests,
-  generateRoleBindingYaml,
-} from "../utils/k8sManifests";
+import { generateK8sManifests } from "../utils/k8sManifests";
 import {
   formatK8sName,
   getNamespace,
@@ -36,6 +33,7 @@ export const createApplication = asyncHandler(
       tolerations,
       affinity,
     } = req.body;
+    const credentials = req.body.credentials || [];
     const owner = (req.user as any)?._id || req.body.owner;
     const namespace = getNamespace(owner.toString(), name);
     const deploymentName = getResourceName("deploy", name);
@@ -65,6 +63,7 @@ export const createApplication = asyncHandler(
       tolerations,
       affinity,
       owner,
+      credentials, // <-- add credentials
     });
     res.status(201).json({ application: app });
   }
@@ -103,6 +102,7 @@ export const updateApplication = asyncHandler(
       tolerations,
       affinity,
     } = req.body;
+    const credentials = req.body.credentials || [];
     const owner = (req.user as any)?._id || req.body.owner;
     const namespace = getNamespace(owner.toString(), name);
     const deploymentName = getResourceName("deploy", name);
@@ -128,7 +128,6 @@ export const updateApplication = asyncHandler(
         name,
         imageUrl: req.body.imageUrl,
         imageTag: req.body.imageTag,
-
         namespace,
         deploymentName,
         serviceName,
@@ -146,6 +145,7 @@ export const updateApplication = asyncHandler(
         tolerations,
         affinity,
         owner,
+        credentials, // <-- add credentials
       },
       { new: true }
     );
@@ -178,14 +178,18 @@ export const applyApplication = asyncHandler(
     }
     fs.mkdirSync(appDir, { recursive: true });
 
-    const { deploymentYaml, serviceYaml, ingressYaml, secretYaml } =
-      generateK8sManifests(app);
+    const {
+      deploymentYaml,
+      serviceYaml,
+      ingressYaml,
+      secretYaml,
+      imagePullSecretYaml,
+    } = generateK8sManifests(app);
     if (!app.namespace) {
       return res
         .status(500)
         .json({ message: "Application namespace is undefined" });
     }
-    const roleBindingYaml = generateRoleBindingYaml(app.namespace);
 
     // Log manifest directory and file paths
     console.log("[applyApplication] appDir:", appDir);
@@ -195,17 +199,22 @@ export const applyApplication = asyncHandler(
       `apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ${app.namespace}\n`
     );
     fs.writeFileSync(path.join(appDir, "secret.yaml"), secretYaml || "");
+    if (imagePullSecretYaml) {
+      fs.writeFileSync(
+        path.join(appDir, "imagepullsecret.yaml"),
+        imagePullSecretYaml
+      );
+    }
     fs.writeFileSync(path.join(appDir, "deployment.yaml"), deploymentYaml);
     fs.writeFileSync(path.join(appDir, "service.yaml"), serviceYaml);
     if (ingressYaml)
       fs.writeFileSync(path.join(appDir, "ingress.yaml"), ingressYaml);
-    fs.writeFileSync(path.join(appDir, "rolebinding.yaml"), roleBindingYaml);
 
     // Log manifest contents
     const manifestFiles = [
       "namespace.yaml",
-      "rolebinding.yaml",
       "secret.yaml",
+      ...(imagePullSecretYaml ? ["imagepullsecret.yaml"] : []),
       "deployment.yaml",
       "service.yaml",
       "ingress.yaml",
@@ -218,7 +227,7 @@ export const applyApplication = asyncHandler(
       }
     }
 
-    // Apply namespace first, then RoleBinding, then secret, then the rest
+    // Apply namespace first, then secret, then imagePullSecret, then the rest
     exec(
       `kubectl apply -f namespace.yaml`,
       { cwd: appDir },
@@ -254,44 +263,99 @@ export const applyApplication = asyncHandler(
                 secret: secretContent,
               });
             }
-            exec(
-              `kubectl apply -f . --prune -l app=${app.name} --field-manager=application-controller`,
-              { cwd: appDir },
-              (err2, stdout2, stderr2) => {
-                console.log(
-                  "[applyApplication] manifests apply stdout:\n",
-                  stdout2
-                );
-                console.log(
-                  "[applyApplication] manifests apply stderr:\n",
-                  stderr2
-                );
-                if (err2) {
-                  // Read all manifest files for debugging
-                  const manifests: Record<string, string> = {};
-                  for (const file of manifestFiles) {
-                    const filePath = path.join(appDir, file);
-                    if (fs.existsSync(filePath)) {
-                      manifests[file] = fs.readFileSync(filePath, "utf8");
-                    }
+            if (imagePullSecretYaml) {
+              exec(
+                `kubectl apply -f imagepullsecret.yaml`,
+                { cwd: appDir },
+                (errImg, stdoutImg, stderrImg) => {
+                  if (errImg) {
+                    return res.status(500).json({
+                      message: "Failed to apply imagePullSecret",
+                      error: stderrImg,
+                      secret: imagePullSecretYaml,
+                    });
                   }
-                  console.error(
-                    "[applyApplication] manifests apply error:",
-                    err2
+                  // Continue to apply the rest
+                  exec(
+                    `kubectl apply -f . --prune -l app=${app.name} --field-manager=application-controller`,
+                    { cwd: appDir },
+                    (err2, stdout2, stderr2) => {
+                      console.log(
+                        "[applyApplication] manifests apply stdout:\n",
+                        stdout2
+                      );
+                      console.log(
+                        "[applyApplication] manifests apply stderr:\n",
+                        stderr2
+                      );
+                      if (err2) {
+                        // Read all manifest files for debugging
+                        const manifests: Record<string, string> = {};
+                        for (const file of manifestFiles) {
+                          const filePath = path.join(appDir, file);
+                          if (fs.existsSync(filePath)) {
+                            manifests[file] = fs.readFileSync(filePath, "utf8");
+                          }
+                        }
+                        console.error(
+                          "[applyApplication] manifests apply error:",
+                          err2
+                        );
+                        return res.status(500).json({
+                          message: "Failed to apply manifests",
+                          error: stderr2,
+                          output: stdout2,
+                          manifests,
+                        });
+                      }
+                      res.json({
+                        message: "Application applied",
+                        output: stdoutNs + stdout2 + stdout + stdout2,
+                      });
+                    }
                   );
-                  return res.status(500).json({
-                    message: "Failed to apply manifests",
-                    error: stderr2,
-                    output: stdout2,
-                    manifests,
+                }
+              );
+            } else {
+              exec(
+                `kubectl apply -f . --prune -l app=${app.name} --field-manager=application-controller`,
+                { cwd: appDir },
+                (err2, stdout2, stderr2) => {
+                  console.log(
+                    "[applyApplication] manifests apply stdout:\n",
+                    stdout2
+                  );
+                  console.log(
+                    "[applyApplication] manifests apply stderr:\n",
+                    stderr2
+                  );
+                  if (err2) {
+                    // Read all manifest files for debugging
+                    const manifests: Record<string, string> = {};
+                    for (const file of manifestFiles) {
+                      const filePath = path.join(appDir, file);
+                      if (fs.existsSync(filePath)) {
+                        manifests[file] = fs.readFileSync(filePath, "utf8");
+                      }
+                    }
+                    console.error(
+                      "[applyApplication] manifests apply error:",
+                      err2
+                    );
+                    return res.status(500).json({
+                      message: "Failed to apply manifests",
+                      error: stderr2,
+                      output: stdout2,
+                      manifests,
+                    });
+                  }
+                  res.json({
+                    message: "Application applied",
+                    output: stdoutNs + stdout2 + stdout + stdout2,
                   });
                 }
-                res.json({
-                  message: "Application applied",
-                  output: stdoutNs + stdout2 + stdout + stdout2,
-                });
-              }
-            );
+              );
+            }
           }
         );
       }

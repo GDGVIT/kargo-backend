@@ -249,41 +249,79 @@ function generateServicePortsBlock(ports: any[]): string {
     .join("\n");
 }
 
+function generateImagePullSecretYaml(
+  app: IApplication,
+  namespace: string
+): string | undefined {
+  if (
+    !app.credentials ||
+    !Array.isArray(app.credentials) ||
+    app.credentials.length === 0
+  )
+    return undefined;
+  // Only use the first credential for now (can be extended for multiple)
+  const cred = app.credentials[0];
+  const auth = Buffer.from(`${cred.username}:${cred.token}`).toString("base64");
+  // Determine registry server
+  let server = "";
+  switch (cred.registryType) {
+    case "dockerhub":
+      server = "https://index.docker.io/v1/";
+      break;
+    case "github":
+      server = "ghcr.io";
+      break;
+    case "gitlab":
+      server = "registry.gitlab.com";
+      break;
+    case "other":
+    default:
+      server = cred.name || "";
+      break;
+  }
+  const dockerConfig = {
+    auths: {
+      [server]: {
+        auth,
+        username: cred.username,
+        password: cred.token,
+      },
+    },
+  };
+  return (
+    `apiVersion: v1\n` +
+    `kind: Secret\n` +
+    `metadata:\n` +
+    `  name: ${app.name}-regcred\n` +
+    `  namespace: ${namespace}\n` +
+    `type: kubernetes.io/dockerconfigjson\n` +
+    `data:\n` +
+    `  .dockerconfigjson: ${Buffer.from(JSON.stringify(dockerConfig)).toString(
+      "base64"
+    )}\n`
+  );
+}
+
 export function generateK8sManifests(app: IApplication): {
   deploymentYaml: string;
   serviceYaml: string;
   ingressYaml: string;
   secretYaml?: string;
+  imagePullSecretYaml?: string;
 } {
   const safeApp = app.toObject ? app.toObject() : app;
   const sanitizedApp = stripDates(safeApp);
   const namespace = sanitizedApp.namespace || "default";
 
-  if (sanitizedApp.ports?.length) {
-    const portSet = new Set<number>();
-    for (const p of sanitizedApp.ports) {
-      if (typeof p.containerPort !== "number") continue;
-      if (portSet.has(p.containerPort)) {
-        throw new Error(`Duplicate containerPort found: ${p.containerPort}`);
-      }
-      portSet.add(p.containerPort);
-    }
-  }
-
-  const secretYaml = generateSecretYaml(
-    { ...sanitizedApp, env: app.env },
-    namespace
-  );
-  const envFromSecretBlock = generateEnvFromSecretBlock({
-    ...sanitizedApp,
-    env: app.env,
-  });
-  const resourcesBlock = generateResourcesBlock(sanitizedApp.resources);
-  const volumeMountsBlock = generateVolumeMountsBlock(sanitizedApp.volumes);
-  const volumesBlock = generateVolumesBlock(sanitizedApp.volumes);
+  const envSection = generateEnvFromSecretBlock(sanitizedApp);
   const portsBlock = generatePortsBlock(sanitizedApp.ports);
   const commandBlock = generateCommandBlock(sanitizedApp.command);
   const argsBlock = generateArgsBlock(sanitizedApp.args);
+  const resourcesBlock = generateResourcesBlock(sanitizedApp.resources);
+  const volumeMountsBlock = generateVolumeMountsBlock(
+    sanitizedApp.volumeMounts
+  );
+  const volumesBlock = generateVolumesBlock(sanitizedApp.volumes);
   const readinessProbeBlock = generateProbeBlock(
     "readinessProbe",
     sanitizedApp.readinessProbe
@@ -294,16 +332,10 @@ export function generateK8sManifests(app: IApplication): {
   );
   const affinityBlock = generateAffinityBlock(sanitizedApp.affinity);
   const tolerationsBlock = generateTolerationsBlock(sanitizedApp.tolerations);
-
-  let envSection = "";
-  if (envFromSecretBlock) {
-    envSection = envFromSecretBlock + "\n";
-  } else if (
-    sanitizedApp.env &&
-    Object.keys(getEnvObject(sanitizedApp.env)).length > 0
-  ) {
-    envSection = "          # WARNING: env present but secret not generated!\n";
-  }
+  const servicePortsBlock = generateServicePortsBlock(sanitizedApp.ports);
+  const secretYaml = generateSecretYaml(sanitizedApp, namespace);
+  const imagePullSecretYaml = generateImagePullSecretYaml(app, namespace);
+  const ingressYaml = generateIngressYaml(sanitizedApp, namespace);
 
   const deployment = `apiVersion: apps/v1
 kind: Deployment
@@ -336,12 +368,13 @@ ${envSection}${portsBlock ? portsBlock + "\n" : ""}${
   }
 ${volumesBlock ? volumesBlock + "\n" : ""}${
     tolerationsBlock ? tolerationsBlock : ""
+  }${
+    app.credentials && app.credentials.length > 0
+      ? `\n      imagePullSecrets:\n        - name: ${sanitizedApp.name}-regcred`
+      : ""
   }`;
 
-  const servicePorts = generateServicePortsBlock(sanitizedApp.ports);
-
-  const service = `---
-apiVersion: v1
+  const service = `apiVersion: v1
 kind: Service
 metadata:
   name: ${sanitizedApp.serviceName}
@@ -349,34 +382,18 @@ metadata:
   labels:
     app: ${sanitizedApp.name}
 spec:
+  type: ClusterIP
   selector:
     app: ${sanitizedApp.name}
   ports:
-${servicePorts}`;
-
-  const ingressYaml = generateIngressYaml(sanitizedApp, namespace);
+${servicePortsBlock}
+`;
 
   return {
     deploymentYaml: deployment,
     serviceYaml: service,
-    ingressYaml,
+    ingressYaml: ingressYaml,
     secretYaml: secretYaml || undefined,
+    imagePullSecretYaml: imagePullSecretYaml || undefined,
   };
-}
-
-export function generateRoleBindingYaml(namespace: string): string {
-  return `apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: kargo-backend-rb
-  namespace: ${namespace}
-subjects:
-  - kind: ServiceAccount
-    name: kargo-backend-sa
-    namespace: default
-roleRef:
-  kind: ClusterRole
-  name: kargo-backend-namespace-manager
-  apiGroup: rbac.authorization.k8s.io
-`;
 }
