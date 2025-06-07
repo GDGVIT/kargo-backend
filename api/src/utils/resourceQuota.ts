@@ -6,20 +6,37 @@ export function parseResource(val: string | undefined) {
   return parseFloat(val);
 }
 
+interface ResourceQuota {
+  requests: {
+    cpu?: string;
+    memory?: string;
+  };
+  limits: {
+    cpu?: string;
+    memory?: string;
+  };
+}
+
+interface CheckResourceQuotaResult {
+  allowed?: ResourceQuota;
+  usage?: ResourceQuota;
+  exceeded: boolean;
+}
+
 export async function checkResourceQuota({
   resources,
   owner,
   req,
 }: {
-  resources: any;
+  resources: ResourceQuota;
   owner: string;
   req: any;
-}) {
+}): Promise<CheckResourceQuotaResult> {
   const userModel = await (await import("../models/user.model")).default
     .findById(owner)
     .populate("plan");
   if (userModel) {
-    let planResources: any = {};
+    let planResources: ResourceQuota = { requests: {}, limits: {} };
     if (
       userModel.plan &&
       typeof userModel.plan === "object" &&
