@@ -1,6 +1,12 @@
 import { formatK8sName, getBaseDomain } from "./k8sHelpers";
 
-export function mapPorts(ports: any[], username: string) {
+interface Port {
+  subdomain?: string | null;
+  containerPort: number;
+  protocol: string;
+}
+
+export function mapPorts(ports: Port[], username: string) {
   const baseDomain = getBaseDomain();
   return ports.map((port: any, idx: number) => {
     let subdomain =
