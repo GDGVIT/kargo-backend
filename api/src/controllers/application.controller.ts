@@ -8,55 +8,14 @@ import {
   generateK8sManifests,
   generateRoleBindingYaml,
 } from "../utils/k8sManifests";
-
-function formatK8sName(base: string) {
-  return base
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/--+/g, "-");
-}
-
-function getNamespace(userId: string, appName: string) {
-  return `ns-${formatK8sName(userId)}-${formatK8sName(appName)}`;
-}
-
-function getResourceName(type: string, appName: string) {
-  return `${type}-${formatK8sName(appName)}`;
-}
-
-const getBaseDomain = () => {
-  let domain = process.env.INGRESS_BASE_DOMAIN || ".vitians.in";
-  if (domain.startsWith(".")) domain = domain.slice(1);
-  return domain;
-};
-
-function buildIngressHost({
-  username,
-  subdomain,
-}: {
-  username: string;
-  subdomain?: string;
-}) {
-  const baseDomain = getBaseDomain();
-  if (typeof subdomain === "string" && subdomain.trim() !== "") {
-    return `${formatK8sName(subdomain)}.${baseDomain}`;
-  }
-
-  return `${formatK8sName(username)}.${baseDomain}`;
-}
-
-function buildSubdomainHost({
-  subdomain,
-  username,
-}: {
-  subdomain: string;
-  username: string;
-}) {
-  return `${formatK8sName(subdomain)}-${formatK8sName(
-    username
-  )}.${getBaseDomain()}`;
-}
+import {
+  formatK8sName,
+  getNamespace,
+  getResourceName,
+  getBaseDomain,
+} from "../utils/k8sHelpers";
+import { mapPorts } from "../utils/portHelpers";
+import { checkResourceQuota } from "../utils/resourceQuota";
 
 export const createApplication = asyncHandler(
   async (req: Request, res: Response) => {
@@ -84,32 +43,7 @@ export const createApplication = asyncHandler(
     const serviceName = getResourceName("svc", name);
 
     const username = (req.user as any)?.username || req.body.username || "user";
-    const baseDomain = getBaseDomain();
-    const updatedPorts = ports.map((port: any, idx: number) => {
-      let subdomain =
-        typeof port.subdomain === "string"
-          ? port.subdomain.trim()
-          : port.subdomain !== undefined && port.subdomain !== null
-          ? String(port.subdomain).trim()
-          : "";
-      if (subdomain) {
-        const fqdn = `${formatK8sName(subdomain)}.${formatK8sName(
-          username
-        )}.${baseDomain}`;
-        if (
-          !subdomain.endsWith(baseDomain) &&
-          !subdomain.endsWith(`.${baseDomain}`)
-        ) {
-          subdomain = fqdn;
-        }
-      }
-      return {
-        name: `port${idx}`,
-        containerPort: port.containerPort,
-        protocol: port.protocol,
-        subdomain,
-      };
-    });
+    const updatedPorts = mapPorts(ports, username);
 
     const app = await Application.create({
       name,
@@ -177,104 +111,16 @@ export const updateApplication = asyncHandler(
     const serviceName = getResourceName("svc", name);
 
     const username = (req.user as any)?.username || req.body.username || "user";
-    const baseDomain = getBaseDomain();
-    const updatedPorts = ports.map((port: any, idx: number) => {
-      let subdomain =
-        typeof port.subdomain === "string"
-          ? port.subdomain.trim()
-          : port.subdomain !== undefined && port.subdomain !== null
-          ? String(port.subdomain).trim()
-          : "";
-      if (subdomain) {
-        const fqdn = `${formatK8sName(subdomain)}.${formatK8sName(
-          username
-        )}.${baseDomain}`;
-        if (
-          !subdomain.endsWith(baseDomain) &&
-          !subdomain.endsWith(`.${baseDomain}`)
-        ) {
-          subdomain = fqdn;
-        }
-      }
-      return {
-        name: `port${idx}`,
-        containerPort: port.containerPort,
-        protocol: port.protocol,
-        subdomain,
-      };
-    });
+    const updatedPorts = mapPorts(ports, username);
 
     if (resources) {
-      const userId = owner;
-      const userModel = await (await import("../models/user.model")).default
-        .findById(userId)
-        .populate("plan");
-      if (userModel) {
-        let planResources: any = {};
-        if (
-          userModel.plan &&
-          typeof userModel.plan === "object" &&
-          "resources" in userModel.plan
-        ) {
-          planResources = (userModel.plan as any).resources || {};
-        }
-        const extra = userModel.extraResources || {};
-        function parse(val: string | undefined) {
-          if (!val) return 0;
-          if (val.endsWith("m")) return parseInt(val) / 1000;
-          if (val.endsWith("Mi")) return parseInt(val);
-          if (val.endsWith("Gi")) return parseInt(val) * 1024;
-          return parseFloat(val);
-        }
-        const allowed = {
-          requests: {
-            cpu:
-              parse(planResources.requests?.cpu) + parse(extra.requests?.cpu),
-            memory:
-              parse(planResources.requests?.memory) +
-              parse(extra.requests?.memory),
-          },
-          limits: {
-            cpu: parse(planResources.limits?.cpu) + parse(extra.limits?.cpu),
-            memory:
-              parse(planResources.limits?.memory) + parse(extra.limits?.memory),
-          },
-        };
-
-        const ApplicationModel = (await import("../models/application.model"))
-          .default;
-        const apps = await ApplicationModel.find({
-          owner: userId,
-          _id: { $ne: req.params.id },
+      const quota = await checkResourceQuota({ resources, owner, req });
+      if (quota.exceeded) {
+        return res.status(400).json({
+          message: "Resource allocation exceeds your allowed quota.",
+          allowed: quota.allowed,
+          usage: quota.usage,
         });
-        const usage = {
-          requests: { cpu: 0, memory: 0 },
-          limits: { cpu: 0, memory: 0 },
-        };
-        for (const app of apps) {
-          usage.requests.cpu += parse(app.resources?.requests?.cpu);
-          usage.requests.memory += parse(app.resources?.requests?.memory);
-          usage.limits.cpu += parse(app.resources?.limits?.cpu);
-          usage.limits.memory += parse(app.resources?.limits?.memory);
-        }
-
-        usage.requests.cpu += parse(resources.requests?.cpu);
-        usage.requests.memory += parse(resources.requests?.memory);
-        usage.limits.cpu += parse(resources.limits?.cpu);
-        usage.limits.memory += parse(resources.limits?.memory);
-
-        if (
-          usage.requests.cpu > allowed.requests.cpu ||
-          usage.requests.memory > allowed.requests.memory ||
-          usage.limits.cpu > allowed.limits.cpu ||
-          usage.limits.memory > allowed.limits.memory
-        ) {
-          return res.status(400).json({
-            message: "Resource allocation exceeds your allowed quota.",
-            allowed,
-            usage,
-          });
-        }
       }
     }
 
@@ -548,7 +394,6 @@ export const streamApplicationLogs = asyncHandler(
     const app = await Application.findById(req.params.id);
     if (!app) return res.status(404).json({ message: "Application not found" });
     const namespace = app.namespace;
-    const deploymentName = app.deploymentName;
     // Get pod name by label selector (assume 1 pod per deployment)
     console.log(
       "[streamApplicationLogs] Using namespace:",
