@@ -174,3 +174,46 @@ export const getUserResourceUsage = async (
     next(err);
   }
 };
+
+// Add or update a registry credential for the authenticated user
+export const upsertRegistryCredential = async (req: Request, res: Response) => {
+  const userId = (req.user as any)?._id;
+  const { name, registryType, username, token } = req.body;
+  if (!name || !registryType || !username || !token) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+  const user = await User.findById(userId);
+  if (!user) return res.status(404).json({ message: "User not found" });
+  const existing = user.credentials?.find(
+    (c) => c.name === name && c.registryType === registryType
+  );
+  if (existing) {
+    existing.username = username;
+    existing.token = token;
+  } else {
+    user.credentials?.push({ name, registryType, username, token });
+  }
+  await user.save();
+  res.json({ message: "Credential saved", credentials: user.credentials });
+};
+
+// Remove a registry credential by name and type
+export const deleteRegistryCredential = async (req: Request, res: Response) => {
+  const userId = (req.user as any)?._id;
+  const { name, registryType } = req.body;
+  const user = await User.findById(userId);
+  if (!user) return res.status(404).json({ message: "User not found" });
+  user.credentials = (user.credentials || []).filter(
+    (c) => !(c.name === name && c.registryType === registryType)
+  );
+  await user.save();
+  res.json({ message: "Credential deleted", credentials: user.credentials });
+};
+
+// Get all registry credentials for the authenticated user
+export const getRegistryCredentials = async (req: Request, res: Response) => {
+  const userId = (req.user as any)?._id;
+  const user = await User.findById(userId);
+  if (!user) return res.status(404).json({ message: "User not found" });
+  res.json({ credentials: user.credentials || [] });
+};

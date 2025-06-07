@@ -4,7 +4,6 @@ export interface IApplication extends Document {
   name: string;
   imageUrl: string;
   imageTag: string;
-  registryToken: string;
   namespace?: string;
   deploymentName?: string;
   serviceName?: string;
@@ -40,6 +39,12 @@ export interface IApplication extends Document {
   nodeSelector?: Record<string, string>;
   tolerations?: Array<Record<string, any>>;
   affinity?: Record<string, any>;
+  credentials?: Array<{
+    name: string;
+    registryType: string;
+    username: string;
+    token: string;
+  }>;
 }
 
 const ResourceSchema = new Schema(
@@ -100,7 +105,14 @@ const applicationSchema = new Schema<IApplication>(
     },
     imageUrl: { type: String, required: true },
     imageTag: { type: String, required: true },
-    registryToken: { type: String, required: true },
+    credentials: [
+      {
+        name: { type: String, required: true },
+        registryType: { type: String, required: true },
+        username: { type: String, required: true },
+        token: { type: String, required: true },
+      },
+    ],
     namespace: String,
     deploymentName: String,
     serviceName: String,
