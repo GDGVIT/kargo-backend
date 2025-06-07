@@ -1,6 +1,7 @@
 import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import User from "../models/user.model";
+import Plan from "../models/plan.model";
 
 export function setupGitHubStrategy() {
   passport.use(
@@ -31,11 +32,13 @@ export function setupGitHubStrategy() {
             }
           }
 
+          const basePlan = await Plan.findOne({ isDefault: true });
           const newUser = await User.create({
             email,
             name: profile.displayName,
             profilePicture: profile.photos?.[0]?.value,
             oauth: { githubId: profile.id },
+            plan: basePlan ? basePlan._id : undefined,
           });
           return done(null, newUser);
         } catch (err) {

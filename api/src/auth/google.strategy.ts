@@ -1,6 +1,7 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/user.model";
+import Plan from "../models/plan.model";
 
 export function setupGoogleStrategy() {
   passport.use(
@@ -25,12 +26,14 @@ export function setupGoogleStrategy() {
             }
           }
 
+          const basePlan = await Plan.findOne({ isDefault: true });
           const newUser = await User.create({
             oauth: { googleId: profile.id },
             email: profile.emails?.[0].value,
             name: profile.displayName,
             profilePicture: profile.photos?.[0]?.value,
             username: undefined,
+            plan: basePlan ? basePlan._id : undefined,
           });
 
           done(null, newUser);

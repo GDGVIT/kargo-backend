@@ -31,22 +31,24 @@ export const register = async (
     const { email, password, name, username } = req.body;
 
     if (!email || !password || !name) {
-      res.status(400).json({ message: "Missing required fields" });
-      return;
+      return res
+        .status(400)
+        .json({ message: "Please provide email, password, and name." });
     }
 
     if (username && !isValidUsername(username)) {
-      res.status(400).json({
+      return res.status(400).json({
         message:
-          "Invalid username. Only alphabets, numbers, underscores, and hyphens are allowed. No spaces.",
+          "Invalid username. Only letters, numbers, underscores, and hyphens are allowed. No spaces.",
       });
-      return;
     }
 
     const existing = await User.findOne({ email });
     if (existing) {
-      res.status(400).json({ message: "User already exists" });
-      return;
+      return res.status(400).json({
+        message:
+          "An account with this email already exists. Please log in or use a different email.",
+      });
     }
 
     const hash = crypto
@@ -79,7 +81,7 @@ export const register = async (
 
     res.json({
       message:
-        "Registered successfully. Please check your email to verify your account.",
+        "Registration successful! Please check your email to verify your account before logging in.",
     });
   } catch (err) {
     next(err);
@@ -100,15 +102,19 @@ export const login = async (
             return reject(err);
           }
           if (!user) {
-            return res
-              .status(401)
-              .json({ message: info?.message || "Invalid credentials" });
+            return res.status(401).json({
+              message:
+                info?.message || "Invalid email or password. Please try again.",
+            });
           }
           req.logIn(user, (err) => {
             if (err) {
               return reject(err);
             }
-            res.json({ user: sanitizeUser(user) });
+            res.json({
+              user: sanitizeUser(user),
+              message: "Login successful!",
+            });
             resolve();
           });
         }
@@ -163,13 +169,17 @@ export const setUsername = async (
 ) => {
   try {
     if (!req.isAuthenticated?.() || !req.user) {
-      return res.status(401).json({ message: "Not authenticated" });
+      return res
+        .status(401)
+        .json({ message: "You must be logged in to set a username." });
     }
 
     const user = req.user as any;
 
     if (user.username) {
-      return res.status(400).json({ message: "Username already set" });
+      return res
+        .status(400)
+        .json({ message: "Username is already set and cannot be changed." });
     }
 
     const { username } = req.body;
@@ -177,20 +187,22 @@ export const setUsername = async (
     if (!username || !isValidUsername(username)) {
       return res.status(400).json({
         message:
-          "Invalid username. Only alphabets, numbers, underscores, and hyphens are allowed. No spaces.",
+          "Invalid username. Only letters, numbers, underscores, and hyphens are allowed. No spaces.",
       });
     }
 
     const existing = await User.findOne({ username });
     if (existing) {
-      return res.status(400).json({ message: "Username already taken" });
+      return res.status(400).json({
+        message: "This username is already taken. Please choose another.",
+      });
     }
 
     user.username = username;
     await user.save();
 
     return res.json({
-      message: "Username set successfully",
+      message: "Username set successfully!",
       user: sanitizeUser(user),
     });
   } catch (err) {
@@ -202,13 +214,18 @@ export const verifyEmail = async (req: Request, res: Response) => {
   const { token } = req.query;
 
   if (!token || typeof token !== "string") {
-    return res.status(400).json({ message: "Invalid or missing token" });
+    return res
+      .status(400)
+      .json({ message: "Invalid or missing verification token." });
   }
 
   const user = await User.findOne({ verificationToken: token });
 
   if (!user) {
-    return res.status(400).json({ message: "Invalid or expired token" });
+    return res.status(400).json({
+      message:
+        "Invalid or expired verification token. Please request a new one.",
+    });
   }
 
   user.isVerified = true;
@@ -216,7 +233,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
   await user.save();
 
   return res.json({
-    message: "Email verified successfully. You can now log in.",
+    message: "Email verified successfully! You can now log in.",
   });
 };
 
@@ -224,17 +241,23 @@ export const resendVerification = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   if (!email) {
-    return res.status(400).json({ message: "Email is required" });
+    return res
+      .status(400)
+      .json({ message: "Please provide your email address." });
   }
 
   const user = await User.findOne({ email });
 
   if (!user) {
-    return res.status(400).json({ message: "User not found" });
+    return res
+      .status(400)
+      .json({ message: "No account found with this email address." });
   }
 
   if (user.isVerified) {
-    return res.status(400).json({ message: "Email is already verified" });
+    return res
+      .status(400)
+      .json({ message: "This email is already verified. Please log in." });
   }
 
   const token = crypto.randomBytes(32).toString("hex");
@@ -248,6 +271,6 @@ export const resendVerification = async (req: Request, res: Response) => {
   });
 
   res.json({
-    message: "Verification email resent",
+    message: "Verification email resent! Please check your inbox.",
   });
 };
