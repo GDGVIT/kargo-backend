@@ -47,16 +47,29 @@ export async function checkResourceQuota({
     const extra = userModel.extraResources || {};
     const allowed = {
       requests: {
-        cpu: parseResource(planResources.requests?.cpu) + parseResource(extra.requests?.cpu),
-        memory: parseResource(planResources.requests?.memory) + parseResource(extra.requests?.memory),
+        cpu: (
+          parseResource(planResources.requests?.cpu) +
+          parseResource(extra.requests?.cpu)
+        ).toString(),
+        memory: (
+          parseResource(planResources.requests?.memory) +
+          parseResource(extra.requests?.memory)
+        ).toString(),
       },
       limits: {
-        cpu: parseResource(planResources.limits?.cpu) + parseResource(extra.limits?.cpu),
-        memory: parseResource(planResources.limits?.memory) + parseResource(extra.limits?.memory),
+        cpu: (
+          parseResource(planResources.limits?.cpu) +
+          parseResource(extra.limits?.cpu)
+        ).toString(),
+        memory: (
+          parseResource(planResources.limits?.memory) +
+          parseResource(extra.limits?.memory)
+        ).toString(),
       },
     };
 
-    const ApplicationModel = (await import("../models/application.model")).default;
+    const ApplicationModel = (await import("../models/application.model"))
+      .default;
     const apps = await ApplicationModel.find({
       owner,
       _id: { $ne: req.params.id },
@@ -77,13 +90,24 @@ export async function checkResourceQuota({
     usage.limits.cpu += parseResource(resources.limits?.cpu);
     usage.limits.memory += parseResource(resources.limits?.memory);
 
+    const usageString: ResourceQuota = {
+      requests: {
+        cpu: usage.requests.cpu.toString(),
+        memory: usage.requests.memory.toString(),
+      },
+      limits: {
+        cpu: usage.limits.cpu.toString(),
+        memory: usage.limits.memory.toString(),
+      },
+    };
+
     if (
-      usage.requests.cpu > allowed.requests.cpu ||
-      usage.requests.memory > allowed.requests.memory ||
-      usage.limits.cpu > allowed.limits.cpu ||
-      usage.limits.memory > allowed.limits.memory
+      usage.requests.cpu > parseFloat(allowed.requests.cpu) ||
+      usage.requests.memory > parseFloat(allowed.requests.memory) ||
+      usage.limits.cpu > parseFloat(allowed.limits.cpu) ||
+      usage.limits.memory > parseFloat(allowed.limits.memory)
     ) {
-      return { allowed, usage, exceeded: true };
+      return { allowed, usage: usageString, exceeded: true };
     }
   }
   return { exceeded: false };
