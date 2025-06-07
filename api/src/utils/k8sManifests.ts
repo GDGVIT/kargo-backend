@@ -49,6 +49,10 @@ function generateIngressYaml(sanitizedApp: any, namespace: string): string {
       ].join("\n");
     })
     .join("\n");
+  // Collect all hosts for TLS
+  const hosts = ingressPorts.map((p: any) =>
+    p.subdomain.endsWith(".") ? p.subdomain.slice(0, -1) : p.subdomain
+  );
   return [
     `---`,
     `apiVersion: networking.k8s.io/v1`,
@@ -59,11 +63,17 @@ function generateIngressYaml(sanitizedApp: any, namespace: string): string {
     `  labels:`,
     `    app: ${sanitizedApp.name}`,
     `  annotations:`,
+    `    kubernetes.io/ingress.class: traefik`,
+    `    cert-manager.io/cluster-issuer: letsencrypt-wildcard`,
     `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
-    `    nginx.ingress.kubernetes.io/ssl-redirect: "false"`,
+    `    nginx.ingress.kubernetes.io/ssl-redirect: "true"`,
     `spec:`,
     `  rules:`,
     rules,
+    `  tls:`,
+    `    - hosts:`,
+    ...hosts.map((h: string) => `        - ${h}`),
+    `      secretName: wildcard-tls`,
   ].join("\n");
 }
 
@@ -344,51 +354,7 @@ spec:
   ports:
 ${servicePorts}`;
 
-  const ingressYaml = (() => {
-    if (
-      !sanitizedApp.ports?.some(
-        (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
-      )
-    )
-      return "";
-    const ingressPorts = sanitizedApp.ports.filter(
-      (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
-    );
-    const rules = ingressPorts
-      .map((p: any) => {
-        let host = p.subdomain;
-        if (host.endsWith(".")) host = host.slice(0, -1);
-        return [
-          `    - host: ${host}`,
-          `      http:`,
-          `        paths:`,
-          `          - path: /`,
-          `            pathType: Prefix`,
-          `            backend:`,
-          `              service:`,
-          `                name: ${sanitizedApp.serviceName}`,
-          `                port:`,
-          `                  number: ${p.containerPort}`,
-        ].join("\n");
-      })
-      .join("\n");
-    return [
-      `---`,
-      `apiVersion: networking.k8s.io/v1`,
-      `kind: Ingress`,
-      `metadata:`,
-      `  name: ${sanitizedApp.name}-ingress`,
-      `  namespace: ${namespace}`,
-      `  labels:`,
-      `    app: ${sanitizedApp.name}`,
-      `  annotations:`,
-      `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
-      `    nginx.ingress.kubernetes.io/ssl-redirect: "false"`,
-      `spec:`,
-      `  rules:`,
-      rules,
-    ].join("\n");
-  })();
+  const ingressYaml = generateIngressYaml(sanitizedApp, namespace);
 
   return {
     deploymentYaml: deployment,
