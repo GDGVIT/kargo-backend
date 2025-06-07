@@ -8,11 +8,120 @@ from langchain.chains.summarize import load_summarize_chain
 from dotenv import load_dotenv
 import os
 from langchain_core.prompts import PromptTemplate
-
+import requests
+import subprocess
+import shutil
+import tempfile
+import re
+from pathlib import Path
 
 load_dotenv()
 verbose = False
-#model = OllamaLLM(model="qwen3:0.6b")
+PRG_EXTENSIONS = [
+    # General Purpose & Scripting
+    '.py',      # Python
+    '.rb',      # Ruby
+    '.pl',      # Perl
+    '.pm',      # Perl Module
+    '.php',     # PHP
+    '.js',      # JavaScript
+    '.mjs',     # JavaScript ES Module
+    '.cjs',     # JavaScript CommonJS Module
+    '.ts',      # TypeScript
+    '.tsx',     # TypeScript with JSX (React)
+    '.jsx',     # JavaScript with JSX (React)
+    '.lua',     # Lua
+    '.groovy',  # Groovy
+    '.tcl',     # Tcl
+    '.sh',      # Shell Script (Bash, sh, etc.)
+    '.bash',    # Bash Script
+    '.zsh',     # Zsh Script
+    '.ps1',     # PowerShell (PowerShell Core runs on Linux)
+    '.swift',   # Swift (server-side)
+    '.dart',    # Dart (server-side, Flutter build)
+    '.coffee',  # CoffeeScript
+
+    # Compiled Languages (source files)
+    '.c',       # C
+    '.h',       # C Header
+    '.cpp',     # C++
+    '.cc',      # C++
+    '.cxx',     # C++
+    '.hpp',     # C++ Header
+    '.hh',      # C++ Header
+    '.java',    # Java
+    '.scala',   # Scala
+    '.sc',      # Scala Script
+    '.kt',      # Kotlin
+    '.kts',     # Kotlin Script
+    '.go',      # Go
+    '.rs',      # Rust
+    '.cs',      # C# (.NET Core/5+)
+    '.fs',      # F# (.NET Core/5+)
+    '.fsx',     # F# Script
+    '.vb',      # VB.NET (.NET Core/5+)
+    '.d',       # D
+    '.pas',     # Pascal
+    '.pp',      # Free Pascal
+    '.f',       # Fortran
+    '.for',     # Fortran
+    '.f90',     # Fortran 90
+    '.f95',     # Fortran 95
+    '.ada',     # Ada
+    '.adb',     # Ada Body
+    '.ads',     # Ada Spec
+    '.cob',     # COBOL (GnuCOBOL)
+    '.cbl',     # COBOL
+    '.asm',     # Assembly
+    '.s',       # Assembly (Unix-like)
+    '.vala',    # Vala
+    '.nim',     # Nim
+    '.cr',      # Crystal
+    '.zig',     # Zig
+    '.m',       # Objective-C (compilers exist for Linux) or MATLAB/Octave
+
+    # Functional Languages (source files)
+    '.hs',      # Haskell
+    '.lhs',     # Literate Haskell
+    '.lisp',    # Lisp
+    '.lsp',     # Lisp
+    '.cl',      # Common Lisp
+    '.el',      # Emacs Lisp (can be scripted)
+    '.scm',     # Scheme
+    '.ss',      # Scheme
+    '.rkt',     # Racket
+    '.clj',     # Clojure
+    '.cljs',    # ClojureScript
+    '.cljc',    # Clojure/ClojureScript (shared)
+    '.ml',      # OCaml
+    '.mli',     # OCaml Interface
+    '.elm',     # Elm (compiles to JS)
+    '.erl',     # Erlang
+    '.hrl',     # Erlang Header
+    '.ex',      # Elixir
+    '.exs',     # Elixir Script
+    '.purs',    # PureScript (compiles to JS)
+    '.idr',     # Idris
+    '.re',      # ReasonML
+    '.rei',     # ReasonML Interface
+
+    '.html',    # HTML
+    '.htm',     # HTML
+    '.css',     # CSS
+    '.scss',    # SCSS (Sass)
+    '.sass',    # Sass
+    '.less',    # LESS
+    '.styl',    # Stylus
+    '.vue',     # Vue.js Single File Components
+    '.svelte',  # Svelte components
+
+    '.R',       # R
+    '.Rmd',     # R Markdown (can be rendered in Docker)
+
+    '.ipynb',   # Jupyter Notebook (Python, R, Julia, etc.)
+
+    '.md'       # Markdown
+]
 model = ChatGroq(
         groq_api_key=os.getenv("GROQ"),
         model_name="llama-3.3-70b-versatile",
@@ -103,7 +212,9 @@ Organize your summary under the following structured headings:
 - **Entrypoint/Startup Requirements**
 - **Other Notable Observations (if any)**
 Ensure no unnecessary Dockerfile steps or services are introduced unless logically inferred or explicitly mentioned. Volumes should also be mounted where needed (ie for data that needs to be written down and persisted)
+the output should only consist of the dockerfile and docker-compose code block, nothing more under no circumstances
 The input will be enclosed in triple backticks:  
+
 ```{text}```
 
     
@@ -116,17 +227,156 @@ The input will be enclosed in triple backticks:
     )  # Set this to true if you want to see the inner workings
 
     output = reduce_chain.run([summaries])
-    # print(output)
+    print(output)
     return output
 
 
+def get_repo_code_as_string(
+    github_url: str,
+    max_size_mb: float = 200.0,
+    target_extensions: list = None,
+    ignore_patterns: list = None,  # e.g., ['.git', 'node_modules', '__pycache__']
+    branch: str = None # Specify a branch, or None for default
+) -> str:
+    """
+    Checks if a GitHub repository is below a certain size, downloads it,
+    and consolidates all code files into a single string with file paths.
+
+    Args:
+        github_url (str): The URL of the GitHub repository.
+        max_size_mb (float): Maximum allowed repository size in megabytes.
+        target_extensions (list, optional): List of file extensions to include (e.g., ['.py', '.js']).
+                                            If None, all files (except ignored) are included.
+        ignore_patterns (list, optional): List of directory/file names or glob patterns to ignore.
+                                          Defaults to ['.git']. Add more as needed.
+        branch (str, optional): The specific branch to clone. If None, clones the default branch.
+
+    Returns:
+        str: A string containing all concatenated code files with their paths,
+             or an error message if an issue occurs.
+    """
+    if ignore_patterns is None:
+        ignore_patterns = ['.git']
+
+    # 1. Parse GitHub URL
+    match = re.match(r"https?://github\.com/([^/]+)/([^/.]+)(\.git)?", github_url)
+    if not match:
+        return "Error: Invalid GitHub URL format."
+    owner, repo_name = match.group(1), match.group(2)
+
+    api_url = f"https://api.github.com/repos/{owner}/{repo_name}"
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        repo_data = response.json()
+    except requests.exceptions.RequestException as e:
+        return f"Error: Could not fetch repository data from GitHub API: {e}"
+
+    repo_size_kb = repo_data.get("size", 0)  # Size is in kilobytes
+    repo_size_mb = repo_size_kb / 1024
+
+    print(f"Repository: {owner}/{repo_name}")
+    print(f"Reported size: {repo_size_mb:.2f} MB")
+
+    if repo_size_mb > max_size_mb:
+        return f"Error: Repository size ({repo_size_mb:.2f}MB) exceeds maximum allowed size ({max_size_mb}MB)."
+
+    # 3. Download repository
+    temp_dir = tempfile.mkdtemp()
+    print(f"Cloning into temporary directory: {temp_dir}...")
+    try:
+        clone_command = ["git", "clone", "--depth", "1"]  # Shallow clone for speed
+        if branch:
+            clone_command.extend(["--branch", branch])
+        clone_command.extend([github_url, temp_dir])
+
+        process = subprocess.run(
+            clone_command,
+            capture_output=True,
+            text=True,
+            check=True  # Raises CalledProcessError for non-zero exit codes
+        )
+        print("Clone successful.")
+    except subprocess.CalledProcessError as e:
+        shutil.rmtree(temp_dir)
+        return f"Error: Could not clone repository.\nGit stderr: {e.stderr}\nGit stdout: {e.stdout}"
+    except FileNotFoundError:
+        shutil.rmtree(temp_dir)
+        return "Error: Git command not found. Please ensure Git is installed and in your PATH."
+
+    # 4. Consolidate code files
+    all_code_string = ""
+    repo_root = Path(temp_dir)
+
+    print("Processing files...")
+    file_count = 0
+    for current_path in repo_root.rglob('*'):  # rglob walks recursively
+        relative_path_str = str(current_path.relative_to(repo_root))
+
+        # Check against ignore patterns (simple substring check for directories, could be more complex)
+        skip = False
+        for pattern in ignore_patterns:
+            if pattern in relative_path_str.split(os.sep):  # Check if any part of path matches
+                skip = True
+                break
+        if skip:
+            continue
+
+        if current_path.is_file():
+            # Check target extensions if provided
+            if target_extensions and current_path.suffix.lower() not in [ext.lower() for ext in target_extensions]:
+                continue
+
+            try:
+                with open(current_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                all_code_string += f"--- File: {relative_path_str} ---\n"
+                all_code_string += content
+                all_code_string += "\n\n"
+                file_count += 1
+            except Exception as e:
+                print(f"Warning: Could not read file {relative_path_str}: {e}")
+
+    print(f"Processed {file_count} files.")
+
+    # 5. Clean up
+    try:
+        shutil.rmtree(temp_dir)
+        print(f"Cleaned up temporary directory: {temp_dir}")
+    except Exception as e:
+        print(f"Warning: Could not remove temporary directory {temp_dir}: {e}")
+
+    if not all_code_string and file_count == 0:
+        return "Warning: No files were processed. Check target_extensions or repository content."
+
+    return all_code_string
+
+
+def dockerise(url):
+    result = get_repo_code_as_string(
+        repo_url_small,
+        max_size_mb=200,
+        target_extensions=PRG_EXTENSIONS,
+        ignore_patterns=['.git', '.github', 'docs', 'tests', '__pycache__', '.tox', '.idea', 'build', 'dist', '*.egg-info']
+    )
+
+    docker = large_summariser(result)
+    docker = docker[docker.index("dockerfile"):]
+    dockerfile = docker[:docker.index("```")]
+    docker_compose = docker[docker.index("yml"):]
+    docker_compose =docker_compose[:docker_compose.index("```")]
+
+    return "#"+dockerfile, "#"+docker_compose
+
 if __name__ == "__main__":
-    x = large_summariser("this is sample text")
-
-    with open("sample.txt", "w", encoding="utf-8") as f:
-        f.write(x)
 
 
+
+    repo_url_small = "https://github.com/psf/requests-html"
+    dockerfile, docker_compose = dockerise(repo_url_small)
+    print(dockerfile)
+    print(docker_compose)
 
 
 
