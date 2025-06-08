@@ -15,7 +15,10 @@ import tempfile
 import re
 from pathlib import Path
 
-load_dotenv()
+# Load .env from project root
+project_root = Path(__file__).resolve().parent.parent
+load_dotenv(dotenv_path=project_root / '.env')
+
 verbose = False
 PRG_EXTENSIONS = [
     # General Purpose & Scripting

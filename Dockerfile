@@ -40,6 +40,11 @@ ENV NODE_ENV=production
 # Update system packages to reduce vulnerabilities
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
+# Install Python and pip for AI service
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install kubectl
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates && \
@@ -53,6 +58,14 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY api/package.json ./
 
+# Copy AI service and install Python dependencies
+COPY AI/requirements.txt ./AI/requirements.txt
+RUN pip3 install --no-cache-dir -r ./AI/requirements.txt
+COPY AI ./AI
+
 EXPOSE 5000
 
+# Default: start Node.js backend. To run AI service, override CMD.
 CMD ["node", "dist/server.js"]
+# To run the AI service: docker run ... python3 AI/main.py
+# Or use docker-compose for both services
