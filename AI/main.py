@@ -135,7 +135,6 @@ def large_summariser(code_base):
 
     docs = text_splitter.create_documents([text])
 
-    num_documents = len(docs)
 
 #    llm = ChatGroq(
 #        groq_api_key=os.getenv("GROQ"),
@@ -290,7 +289,7 @@ def get_repo_code_as_string(
             clone_command.extend(["--branch", branch])
         clone_command.extend([github_url, temp_dir])
 
-        process = subprocess.run(
+        subprocess.run(
             clone_command,
             capture_output=True,
             text=True,
