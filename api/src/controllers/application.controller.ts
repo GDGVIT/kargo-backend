@@ -13,6 +13,7 @@ import {
 } from "../utils/k8sHelpers";
 import { mapPorts } from "../utils/portHelpers";
 import { checkResourceQuota } from "../utils/resourceQuota";
+import { runDockerScript } from "../utils/docker-file";
 
 export const createApplication = asyncHandler(
   async (req: Request, res: Response) => {
@@ -518,3 +519,25 @@ export const streamApplicationLogs = asyncHandler(
     });
   }
 );
+
+export const runDockerHandler = async (req: Request, res: Response) => {
+  const { url } = req.body;
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ error: "Missing or invalid 'url' in body." });
+  }
+  try {
+    const result = await runDockerScript(url);
+    if (result.error) {
+      return res.status(500).json({ error: result.error });
+    }
+    res.status(200).json({
+      dockerfile: result.dockerfile,
+      dockerCompose: result.dockerCompose,
+    });
+  } catch (error: any) {
+    console.error("[run-docker:error]", error.message);
+    res
+      .status(500)
+      .json({ error: "Python script failed.", detail: error.message });
+  }
+};

@@ -7,10 +7,11 @@ def main():
         exit(1)
     repo_url_small = argv[1]
     dockerfile, docker_compose = dockerise(repo_url_small)
-    with open("Dockerfile", "w") as f:
-        f.write(dockerfile)
-    with open("docker-compose.yml", "w") as f:
-        f.write(docker_compose)
-
+    print("DOCKERFILE_START")
+    print(dockerfile)
+    print("DOCKERFILE_END")
+    print("DOCKER_COMPOSE_START")
+    print(docker_compose)
+    print("DOCKER_COMPOSE_END")
 
 main()

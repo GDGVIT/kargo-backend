@@ -179,7 +179,7 @@ Only include what's clearly evident or logically inferred from the codebase. Avo
     # Loop through a range of the lenght of your selected docs
     for i, doc in enumerate(selected_docs):
         # Go get a summary of the chunk
-        chunk_summary = map_chain.run([doc])
+        chunk_summary = map_chain.invoke([doc])
 
         # Append that summary to your list
         summary_list.append(chunk_summary)
@@ -229,7 +229,7 @@ The input will be enclosed in triple backticks:
         llm=llm2, chain_type="stuff", prompt=combine_prompt_template, verbose=verbose
     )  # Set this to true if you want to see the inner workings
 
-    output = reduce_chain.run([summaries])
+    output = reduce_chain.invoke([summaries])
     print(output)
     return output
 
