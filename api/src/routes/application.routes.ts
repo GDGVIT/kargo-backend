@@ -10,8 +10,10 @@ import {
   removeNamespace,
   deleteApplicationAndResources,
   streamApplicationLogs,
+  runDockerHandler,
 } from "../controllers/application.controller";
 import { ensureAuthenticated } from "./auth.routes";
+import { asyncHandler } from "../utils/asyncHandler";
 
 const router = Router();
 
@@ -27,5 +29,6 @@ router.post("/:id/apply", applyApplication);
 router.post("/:id/remove-deployment", removeDeployment);
 router.post("/:id/remove-namespace", removeNamespace);
 router.get("/:id/logs", streamApplicationLogs);
+router.post("/run-docker", asyncHandler(runDockerHandler));
 
 export default router;

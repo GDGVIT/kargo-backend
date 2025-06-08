@@ -15,10 +15,7 @@ import tempfile
 import re
 from pathlib import Path
 
-# Load .env from project root
-project_root = Path(__file__).resolve().parent.parent
-load_dotenv(dotenv_path=project_root / '.env')
-
+load_dotenv()
 verbose = False
 PRG_EXTENSIONS = [
     # General Purpose & Scripting
@@ -181,10 +178,20 @@ Only include what's clearly evident or logically inferred from the codebase. Avo
         # Go get a summary of the chunk
         chunk_summary = map_chain.run([doc])
 
+        # If the summary is a dict (as returned by some LLM chains), extract the string
+        if isinstance(chunk_summary, dict):
+            # Try to get the main content from common keys
+            if 'output_text' in chunk_summary:
+                chunk_summary = chunk_summary['output_text']
+            elif 'text' in chunk_summary:
+                chunk_summary = chunk_summary['text']
+            else:
+                chunk_summary = str(chunk_summary)
+
         # Append that summary to your list
         summary_list.append(chunk_summary)
 
-    summaries = "\n".join(summary_list)
+    summaries = "\n".join(str(s) for s in summary_list)
     # Convert it back to a document
     summaries = Document(page_content=summaries)
 
@@ -365,10 +372,20 @@ def dockerise(url):
     )
 
     docker = large_summariser(result)
+    # If the output is a dict, try to extract the main text
+    if isinstance(docker, dict):
+        if 'output_text' in docker:
+            docker = docker['output_text']
+        elif 'text' in docker:
+            docker = docker['text']
+        else:
+            docker = str(docker)
+    # Now docker is a string
+    docker = str(docker)
     docker = docker[docker.index("dockerfile"):]
     dockerfile = docker[:docker.index("```")]
     docker_compose = docker[docker.index("yml"):]
-    docker_compose =docker_compose[:docker_compose.index("```")]
+    docker_compose = docker_compose[:docker_compose.index("```")]
 
     return "#"+dockerfile, "#"+docker_compose
 
