@@ -1,0 +1,26 @@
+import {
+  githubInstall,
+  githubCallback,
+  githubRepos,
+  githubInstallationId,
+  githubSaveInstallationId,
+} from "../controllers/github.controller";
+import { Router } from "express";
+
+const router = Router();
+
+router.get("/install", githubInstall);
+router.post("/callback", (req, res) => {
+  githubCallback(req, res);
+});
+router.get("/repos", (req, res) => {
+  githubRepos(req, res);
+});
+router.get("/installation-id", (req, res) => {
+  githubInstallationId(req, res);
+});
+router.post("/installation-id", (req, res) => {
+  githubSaveInstallationId(req, res);
+});
+
+export default router;

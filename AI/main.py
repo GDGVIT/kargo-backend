@@ -373,7 +373,7 @@ if __name__ == "__main__":
 
 
 
-    repo_url_small = "https://github.com/psf/requests-html"
+    repo_url_small = "https://github.com/Noel-Alex/ultrachat"
     dockerfile, docker_compose = dockerise(repo_url_small)
     print(dockerfile)
     print(docker_compose)
