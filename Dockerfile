@@ -42,9 +42,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY api/package.json ./
 
-COPY AI/requirements.txt ./AI/requirements.txt
+COPY api/AI/requirements.txt ./AI/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages -r ./AI/requirements.txt
-COPY AI ./AI
+
+COPY api/AI ./AI
 
 EXPOSE 5000
 

@@ -382,11 +382,15 @@ def dockerise(url):
             docker = str(docker)
     # Now docker is a string
     docker = str(docker)
-    docker = docker[docker.index("dockerfile"):]
-    dockerfile = docker[:docker.index("```")]
-    docker_compose = docker[docker.index("yml"):]
-    docker_compose = docker_compose[:docker_compose.index("```")]
-
+    # Defensive: check for 'dockerfile' and 'yml' blocks before extracting
+    if "dockerfile" in docker and "yml" in docker:
+        docker = docker[docker.index("dockerfile"):]
+        dockerfile = docker[:docker.index("```")]
+        docker_compose = docker[docker.index("yml"):]
+        docker_compose = docker_compose[:docker_compose.index("```")]
+    else:
+        dockerfile = ""
+        docker_compose = ""
     return "#"+dockerfile, "#"+docker_compose
 
 if __name__ == "__main__":

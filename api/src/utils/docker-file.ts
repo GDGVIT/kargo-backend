@@ -5,8 +5,8 @@ import fs from "fs/promises";
 export async function runDockerScript(
   gitHubUrl: string
 ): Promise<{ dockerfile?: string; dockerCompose?: string; error?: string }> {
-  const scriptPath = path.resolve(__dirname, "../../../AI/docker.py");
-  const outputPath = path.resolve(__dirname, "../../../AI/output");
+  const scriptPath = path.resolve(__dirname, "../../AI/docker.py");
+  const outputPath = path.resolve(__dirname, "../../AI/output");
   return new Promise((resolve, reject) => {
     const python = spawn("python", ["-u", scriptPath, gitHubUrl]);
     let stderr = "";
