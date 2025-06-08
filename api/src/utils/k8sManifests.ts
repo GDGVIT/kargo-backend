@@ -1,5 +1,5 @@
 import { dump } from "js-yaml";
-import { IApplication } from "../models/application.model";
+import type { IApplication } from "../types/application.types";
 
 function stripDates(obj: any): any {
   const seen = new WeakSet();
@@ -309,8 +309,7 @@ export function generateK8sManifests(app: IApplication): {
   secretYaml?: string;
   imagePullSecretYaml?: string;
 } {
-  const safeApp = app.toObject ? app.toObject() : app;
-  const sanitizedApp = stripDates(safeApp);
+  const sanitizedApp = stripDates(app);
   const namespace = sanitizedApp.namespace || "default";
 
   const envSection = generateEnvFromSecretBlock(sanitizedApp);

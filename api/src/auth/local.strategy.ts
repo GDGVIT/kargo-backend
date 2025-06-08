@@ -31,7 +31,7 @@ passport.use(
         if (!user.plan) {
           const basePlan = await Plan.findOne({ isDefault: true });
           if (basePlan) {
-            user.plan = basePlan._id as string;
+            user.plan = basePlan._id;
             await user.save();
           }
         }

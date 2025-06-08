@@ -43,6 +43,6 @@ export interface IUser {
       memory?: string;
     };
   };
-  plan?: string;
+  plan?: mongoose.Types.ObjectId | string;
   credentials?: IRegistryCredential[];
 }
