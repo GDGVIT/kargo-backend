@@ -7,15 +7,12 @@ export async function runDockerScript(
 ): Promise<{ dockerfile?: string; dockerCompose?: string; error?: string }> {
   const scriptPath = path.resolve(__dirname, "../../../AI/docker.py");
   const outputPath = path.resolve(__dirname, "../../../AI/output");
-
   return new Promise((resolve, reject) => {
     const python = spawn("python", ["-u", scriptPath, gitHubUrl]);
-
     let stderr = "";
     python.stderr.on("data", (data) => {
       stderr += data.toString();
     });
-
     python.on("close", async (code) => {
       if (code !== 0 || stderr) {
         return resolve({ error: stderr || `Python exited with code ${code}` });
