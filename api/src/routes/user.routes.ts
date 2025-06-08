@@ -44,12 +44,18 @@ router.get(
   asyncHandler(getUserResourceUsage)
 );
 
-// GET all users (admin/superadmin only): name, email, role
+// GET all users (admin/superadmin only): name, email, role, plan
 router.get(
   "/",
   ensureAdmin,
   asyncHandler(async (_req, res) => {
-    const users = await User.find({}, "_id name email role username");
+    const users = await User.find(
+      {},
+      "_id name email role username plan"
+    ).populate({
+      path: "plan",
+      select: "_id name isDefault",
+    });
     res.json({ users });
   })
 );

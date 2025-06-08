@@ -40,7 +40,15 @@ export const getPlans = async (
   next: NextFunction
 ) => {
   try {
-    const plans = await Plan.find();
+    let plans = await Plan.find();
+    // Ensure all plans have resources, requests, and limits fields
+    plans = plans.map((plan: any) => {
+      const p = plan.toObject();
+      p.resources = p.resources || {};
+      p.resources.requests = p.resources.requests || {};
+      p.resources.limits = p.resources.limits || {};
+      return p;
+    });
     res.json({ plans });
   } catch (err) {
     next(err);
@@ -95,9 +103,14 @@ export const getPlanById = async (
   next: NextFunction
 ) => {
   try {
-    const plan = await Plan.findById(req.params.id);
+    let plan = await Plan.findById(req.params.id);
     if (!plan) return res.status(404).json({ message: "Plan not found" });
-    res.json(plan);
+    // Ensure plan has resources, requests, and limits fields
+    const p = plan.toObject();
+    p.resources = p.resources || {};
+    p.resources.requests = p.resources.requests || {};
+    p.resources.limits = p.resources.limits || {};
+    res.json(p);
   } catch (err) {
     next(err);
   }
