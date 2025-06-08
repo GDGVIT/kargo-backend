@@ -1,24 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { IPlan } from "../types/plan.types";
 
-export interface IPlan extends Document {
-  name: string;
-  description?: string;
-  resources: {
-    requests?: {
-      cpu?: string;
-      memory?: string;
-    };
-    limits?: {
-      cpu?: string;
-      memory?: string;
-    };
-  };
-  isDefault?: boolean;
-  price?: number;
-  isActive?: boolean;
-}
-
-const planSchema = new Schema<IPlan>(
+const planSchema = new Schema<IPlan & Document>(
   {
     name: { type: String, required: true, unique: true },
     description: { type: String },

@@ -1,51 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
-
-export interface IApplication extends Document {
-  name: string;
-  imageUrl: string;
-  imageTag: string;
-  namespace?: string;
-  deploymentName?: string;
-  serviceName?: string;
-  env?: Record<string, string>;
-  owner: mongoose.Types.ObjectId;
-  resources?: {
-    requests?: { cpu?: string; memory?: string };
-    limits?: { cpu?: string; memory?: string };
-  };
-  ports?: Array<{
-    name?: string;
-    containerPort: number;
-    protocol?: string;
-    subdomain?: string;
-  }>;
-  volumes?: Array<{
-    name: string;
-    mountPath: string;
-    type?: string;
-    configMapName?: string;
-    secretName?: string;
-    claimName?: string;
-    size?: string;
-    readOnly?: boolean;
-    secretItems?: Array<{ key: string; path: string }>;
-  }>;
-  livenessProbe?: Record<string, any>;
-  readinessProbe?: Record<string, any>;
-  command?: string[];
-  args?: string[];
-  labels?: Record<string, string>;
-  annotations?: Record<string, string>;
-  nodeSelector?: Record<string, string>;
-  tolerations?: Array<Record<string, any>>;
-  affinity?: Record<string, any>;
-  credentials?: Array<{
-    name: string;
-    registryType: string;
-    username: string;
-    token: string;
-  }>;
-}
+import { IApplication } from "../types/application.types";
 
 const ResourceSchema = new Schema(
   {
@@ -88,7 +42,7 @@ const VolumeSchema = new Schema(
   { _id: false }
 );
 
-const applicationSchema = new Schema<IApplication>(
+const applicationSchema = new Schema<IApplication & Document>(
   {
     name: {
       type: String,
@@ -137,4 +91,7 @@ const applicationSchema = new Schema<IApplication>(
   { timestamps: true }
 );
 
-export default mongoose.model<IApplication>("Application", applicationSchema);
+export default mongoose.model<IApplication & Document>(
+  "Application",
+  applicationSchema
+);
