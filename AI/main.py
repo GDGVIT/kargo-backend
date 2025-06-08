@@ -135,6 +135,7 @@ def large_summariser(code_base):
 
     docs = text_splitter.create_documents([text])
 
+    num_documents = len(docs)
 
 #    llm = ChatGroq(
 #        groq_api_key=os.getenv("GROQ"),
@@ -289,7 +290,7 @@ def get_repo_code_as_string(
             clone_command.extend(["--branch", branch])
         clone_command.extend([github_url, temp_dir])
 
-        subprocess.run(
+        process = subprocess.run(
             clone_command,
             capture_output=True,
             text=True,
@@ -354,7 +355,7 @@ def get_repo_code_as_string(
 
 def dockerise(url):
     result = get_repo_code_as_string(
-        repo_url_small,
+        url,
         max_size_mb=200,
         target_extensions=PRG_EXTENSIONS,
         ignore_patterns=['.git', '.github', 'docs', 'tests', '__pycache__', '.tox', '.idea', 'build', 'dist', '*.egg-info']
@@ -369,9 +370,6 @@ def dockerise(url):
     return "#"+dockerfile, "#"+docker_compose
 
 if __name__ == "__main__":
-
-
-
     repo_url_small = "https://github.com/Noel-Alex/ultrachat"
     dockerfile, docker_compose = dockerise(repo_url_small)
     print(dockerfile)
