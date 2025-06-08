@@ -42,7 +42,7 @@ COPY --from=builder /app/dist ./dist
 COPY api/package.json ./
 
 COPY AI/requirements.txt ./AI/requirements.txt
-RUN pip3 install --no-cache-dir -r ./AI/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r ./AI/requirements.txt
 COPY AI ./AI
 
 EXPOSE 5000
