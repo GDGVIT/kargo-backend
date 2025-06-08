@@ -528,6 +528,7 @@ export const runDockerHandler = async (req: Request, res: Response) => {
   try {
     const result = await runDockerScript(url);
     if (result.error) {
+      // Return the error with as much detail as possible
       return res.status(500).json({ error: result.error });
     }
     res.status(200).json({
@@ -535,9 +536,11 @@ export const runDockerHandler = async (req: Request, res: Response) => {
       dockerCompose: result.dockerCompose,
     });
   } catch (error: any) {
-    console.error("[run-docker:error]", error.message);
-    res
-      .status(500)
-      .json({ error: "Python script failed.", detail: error.message });
+    // Include the error object and stack trace if available
+    console.error("[run-docker:error]", error);
+    res.status(500).json({
+      error: "Python script failed.",
+      detail: error?.message || error,
+    });
   }
 };
