@@ -97,20 +97,34 @@ export const githubRepos = async (req: Request, res: Response) => {
             },
           }
         );
-
         const accessToken = tokenResponse.data.token;
 
-        const reposResponse = await axios.get(
-          "https://api.github.com/installation/repositories",
-          {
-            headers: {
-              Authorization: `token ${accessToken}`,
-              Accept: "application/vnd.github+json",
-            },
+        // Fetch all pages of repos for this installation
+        let page = 1;
+        let repos: any[] = [];
+        let hasMore = true;
+        while (hasMore) {
+          const reposResponse = await axios.get(
+            "https://api.github.com/installation/repositories",
+            {
+              headers: {
+                Authorization: `token ${accessToken}`,
+                Accept: "application/vnd.github+json",
+              },
+              params: {
+                per_page: 100,
+                page,
+              },
+            }
+          );
+          const pageRepos = reposResponse.data.repositories || [];
+          repos = repos.concat(pageRepos);
+          if (pageRepos.length < 100) {
+            hasMore = false;
+          } else {
+            page++;
           }
-        );
-
-        const repos = reposResponse.data.repositories || [];
+        }
         const extendedRepos = repos.map((repo: any) => ({
           id: repo.id,
           name: repo.name,
@@ -130,7 +144,6 @@ export const githubRepos = async (req: Request, res: Response) => {
           license: repo.license ? repo.license.spdx_id : null,
           open_issues_count: repo.open_issues_count,
         }));
-
         allRepos = allRepos.concat(extendedRepos);
       } catch (error: any) {
         // If 404, remove the installationId from user and DB

@@ -15,7 +15,7 @@ passport.use(
         if (!user.password) {
           return done(null, false, {
             message:
-              "Please login with OAuth and set a password to enable email login.",
+              "Email/password login is not enabled for your account. Please continue using OAuth to sign in.",
           });
         }
 
