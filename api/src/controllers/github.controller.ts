@@ -59,11 +59,12 @@ export const githubCallback = async (req: Request, res: Response) => {
 export const githubRepos = async (req: Request, res: Response) => {
   try {
     let installationIds: string[] = [];
+    let user = null;
 
     if (req.query.installation_ids) {
       installationIds = (req.query.installation_ids as string).split(",");
     } else {
-      const user = await getUserFromSession(req);
+      user = await getUserFromSession(req);
       if (
         !user?.githubInstallationId ||
         user.githubInstallationId.length === 0
@@ -81,53 +82,84 @@ export const githubRepos = async (req: Request, res: Response) => {
 
     const jwtToken = createGitHubJwt();
     let allRepos: any[] = [];
+    let removedInstallationIds: string[] = [];
+    let userChanged = false;
 
     for (const installationId of installationIds) {
-      const tokenResponse = await axios.post(
-        `https://api.github.com/app/installations/${installationId}/access_tokens`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${jwtToken}`,
-            Accept: "application/vnd.github+json",
-          },
+      try {
+        const tokenResponse = await axios.post(
+          `https://api.github.com/app/installations/${installationId}/access_tokens`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${jwtToken}`,
+              Accept: "application/vnd.github+json",
+            },
+          }
+        );
+
+        const accessToken = tokenResponse.data.token;
+
+        const reposResponse = await axios.get(
+          "https://api.github.com/installation/repositories",
+          {
+            headers: {
+              Authorization: `token ${accessToken}`,
+              Accept: "application/vnd.github+json",
+            },
+          }
+        );
+
+        const repos = reposResponse.data.repositories || [];
+        const extendedRepos = repos.map((repo: any) => ({
+          id: repo.id,
+          name: repo.name,
+          full_name: repo.full_name,
+          html_url: repo.html_url,
+          description: repo.description,
+          private: repo.private,
+          fork: repo.fork,
+          owner_login: repo.owner?.login,
+          forks_count: repo.forks_count,
+          stargazers_count: repo.stargazers_count,
+          watchers_count: repo.watchers_count,
+          language: repo.language,
+          created_at: repo.created_at,
+          updated_at: repo.updated_at,
+          pushed_at: repo.pushed_at,
+          license: repo.license ? repo.license.spdx_id : null,
+          open_issues_count: repo.open_issues_count,
+        }));
+
+        allRepos = allRepos.concat(extendedRepos);
+      } catch (error: any) {
+        // If 404, remove the installationId from user and DB
+        if (
+          error.response &&
+          error.response.status === 404 &&
+          user &&
+          user.githubInstallationId?.includes(installationId)
+        ) {
+          user.githubInstallationId = user.githubInstallationId.filter(
+            (id: string) => id !== installationId
+          );
+          removedInstallationIds.push(installationId);
+          userChanged = true;
+        } else {
+          throw error;
         }
-      );
+      }
+    }
 
-      const accessToken = tokenResponse.data.token;
+    if (userChanged && user) {
+      await user.save();
+    }
 
-      const reposResponse = await axios.get(
-        "https://api.github.com/installation/repositories",
-        {
-          headers: {
-            Authorization: `token ${accessToken}`,
-            Accept: "application/vnd.github+json",
-          },
-        }
-      );
-
-      const repos = reposResponse.data.repositories || [];
-      const extendedRepos = repos.map((repo: any) => ({
-        id: repo.id,
-        name: repo.name,
-        full_name: repo.full_name,
-        html_url: repo.html_url,
-        description: repo.description,
-        private: repo.private,
-        fork: repo.fork,
-        owner_login: repo.owner?.login,
-        forks_count: repo.forks_count,
-        stargazers_count: repo.stargazers_count,
-        watchers_count: repo.watchers_count,
-        language: repo.language,
-        created_at: repo.created_at,
-        updated_at: repo.updated_at,
-        pushed_at: repo.pushed_at,
-        license: repo.license ? repo.license.spdx_id : null,
-        open_issues_count: repo.open_issues_count,
-      }));
-
-      allRepos = allRepos.concat(extendedRepos);
+    if (removedInstallationIds.length > 0) {
+      return res.status(400).json({
+        error: `Some GitHub installations were invalid and have been removed. Please reconnect GitHub if needed.`,
+        removedInstallationIds,
+      });
     }
 
     res.json({ repositories: allRepos });

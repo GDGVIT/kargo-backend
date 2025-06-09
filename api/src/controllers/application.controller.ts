@@ -146,7 +146,7 @@ export const updateApplication = asyncHandler(
         tolerations,
         affinity,
         owner,
-        credentials, // <-- add credentials
+        credentials,
       },
       { new: true }
     );
