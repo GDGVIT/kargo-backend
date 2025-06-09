@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { IUser } from "../models/user.model";
+import { IUser } from "../types/user.types";
 
 // Middleware to check if user is admin or superadmin
 export function ensureAdmin(
