@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import Plan from "../models/plan.model";
+import { log, formatNotification } from "../utils/logger";
 
 // Create a new plan (admin only)
 export const createPlan = async (
@@ -11,9 +12,10 @@ export const createPlan = async (
     const { name, description, resources, isDefault, price, isActive } =
       req.body;
     if (!name || !resources) {
+      log({ type: "error", message: "Name and resources are required" });
       return res
         .status(400)
-        .json({ message: "Name and resources are required" });
+        .json(formatNotification("Name and resources are required", "error"));
     }
     if (isDefault) {
       // Only one default plan allowed
@@ -27,8 +29,12 @@ export const createPlan = async (
       price,
       isActive,
     });
-    res.status(201).json({ message: "Plan created", plan });
+    log({ type: "success", message: `Plan created: ${name}` });
+    res
+      .status(201)
+      .json({ ...formatNotification("Plan created", "success"), plan });
   } catch (err) {
+    log({ type: "error", message: "Failed to create plan", meta: err });
     next(err);
   }
 };
@@ -49,8 +55,10 @@ export const getPlans = async (
       p.resources.limits = p.resources.limits || {};
       return p;
     });
-    res.json({ plans });
+    log({ type: "info", message: "Fetched all plans" });
+    res.json({ ...formatNotification("Fetched all plans", "info"), plans });
   } catch (err) {
+    log({ type: "error", message: "Failed to fetch plans", meta: err });
     next(err);
   }
 };

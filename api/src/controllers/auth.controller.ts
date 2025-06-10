@@ -5,6 +5,7 @@ import crypto from "crypto";
 import User from "../models/user.model";
 import Plan from "../models/plan.model";
 import { sendVerificationEmail } from "../utils/verification";
+import { log, formatNotification } from "../utils/logger";
 
 function isValidUsername(username: string): boolean {
   const usernameRegex = /^[A-Za-z0-9_-]+$/;
@@ -31,24 +32,46 @@ export const register = async (
     const { email, password, name, username } = req.body;
 
     if (!email || !password || !name) {
+      log({
+        type: "error",
+        message: "Please provide email, password, and name.",
+      });
       return res
         .status(400)
-        .json({ message: "Please provide email, password, and name." });
+        .json(
+          formatNotification(
+            "Please provide email, password, and name.",
+            "error"
+          )
+        );
     }
 
     if (username && !isValidUsername(username)) {
-      return res.status(400).json({
-        message:
-          "Invalid username. Only letters, numbers, underscores, and hyphens are allowed. No spaces.",
-      });
+      log({ type: "error", message: "Invalid username format." });
+      return res
+        .status(400)
+        .json(
+          formatNotification(
+            "Invalid username. Only letters, numbers, underscores, and hyphens are allowed. No spaces.",
+            "error"
+          )
+        );
     }
 
     const existing = await User.findOne({ email });
     if (existing) {
-      return res.status(400).json({
-        message:
-          "An account with this email already exists. Please log in or use a different email.",
+      log({
+        type: "warning",
+        message: `Account with email ${email} already exists.`,
       });
+      return res
+        .status(400)
+        .json(
+          formatNotification(
+            "An account with this email already exists. Please log in or use a different email.",
+            "warning"
+          )
+        );
     }
 
     const hash = crypto
@@ -80,11 +103,15 @@ export const register = async (
       name,
     });
 
-    res.json({
-      message:
+    log({ type: "success", message: `User registered: ${email}` });
+    res.json(
+      formatNotification(
         "Registration successful! Please check your email to verify your account before logging in.",
-    });
+        "success"
+      )
+    );
   } catch (err) {
+    log({ type: "error", message: "Registration failed", meta: err });
     next(err);
   }
 };
@@ -100,21 +127,36 @@ export const login = async (
         "local",
         (err: any, user: Express.User, info: { message: any }) => {
           if (err) {
+            log({ type: "error", message: "Login error", meta: err });
             return reject(err);
           }
           if (!user) {
-            return res.status(401).json({
-              message:
-                info?.message || "Invalid email or password. Please try again.",
+            log({
+              type: "error",
+              message: info?.message || "Invalid email or password.",
             });
+            return res
+              .status(401)
+              .json(
+                formatNotification(
+                  info?.message ||
+                    "Invalid email or password. Please try again.",
+                  "error"
+                )
+              );
           }
           req.logIn(user, (err) => {
             if (err) {
+              log({ type: "error", message: "Login error", meta: err });
               return reject(err);
             }
+            log({
+              type: "success",
+              message: `User logged in: ${user && (user as any).email}`,
+            });
             res.json({
               user: sanitizeUser(user),
-              message: "Login successful!",
+              ...formatNotification("Login successful!", "success"),
             });
             resolve();
           });
@@ -122,13 +164,17 @@ export const login = async (
       )(req, res, next);
     });
   } catch (err) {
+    log({ type: "error", message: "Login failed", meta: err });
     next(err);
   }
 };
 
 export const logout = (req: Request, res: Response) => {
   req.logout((err) => {
-    if (err) return res.status(500).json({ message: "Logout failed" });
+    if (err) {
+      log({ type: "error", message: "Logout failed", meta: err });
+      return res.status(500).json(formatNotification("Logout failed", "error"));
+    }
 
     res.clearCookie("connect.sid", {
       httpOnly: true,
@@ -136,7 +182,8 @@ export const logout = (req: Request, res: Response) => {
       sameSite: "lax",
     });
 
-    res.json({ message: "Logged out" });
+    log({ type: "success", message: "User logged out" });
+    res.json(formatNotification("Logged out", "success"));
   });
 };
 
@@ -156,10 +203,16 @@ export const googleCallback = [
 export const getMe = async (req: Request, res: Response) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
     const user = await User.findById((req.user as any)._id).populate("plan");
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      log({ type: "error", message: "User not found" });
+      return res
+        .status(404)
+        .json(formatNotification("User not found", "error"));
+    }
     res.json({ user: sanitizeUser(user) });
   } else {
-    res.status(401).json({ message: "Not authenticated" });
+    log({ type: "error", message: "Not authenticated" });
+    res.status(401).json(formatNotification("Not authenticated", "error"));
   }
 };
 
@@ -170,43 +223,74 @@ export const setUsername = async (
 ) => {
   try {
     if (!req.isAuthenticated?.() || !req.user) {
+      log({
+        type: "error",
+        message: "You must be logged in to set a username.",
+      });
       return res
         .status(401)
-        .json({ message: "You must be logged in to set a username." });
+        .json(
+          formatNotification(
+            "You must be logged in to set a username.",
+            "error"
+          )
+        );
     }
 
     const user = req.user as any;
 
     if (user.username) {
+      log({
+        type: "warning",
+        message: "Username is already set and cannot be changed.",
+      });
       return res
         .status(400)
-        .json({ message: "Username is already set and cannot be changed." });
+        .json(
+          formatNotification(
+            "Username is already set and cannot be changed.",
+            "warning"
+          )
+        );
     }
 
     const { username } = req.body;
 
     if (!username || !isValidUsername(username)) {
-      return res.status(400).json({
-        message:
-          "Invalid username. Only letters, numbers, underscores, and hyphens are allowed. No spaces.",
-      });
+      log({ type: "error", message: "Invalid username format." });
+      return res
+        .status(400)
+        .json(
+          formatNotification(
+            "Invalid username. Only letters, numbers, underscores, and hyphens are allowed. No spaces.",
+            "error"
+          )
+        );
     }
 
     const existing = await User.findOne({ username });
     if (existing) {
-      return res.status(400).json({
-        message: "This username is already taken. Please choose another.",
-      });
+      log({ type: "warning", message: "This username is already taken." });
+      return res
+        .status(400)
+        .json(
+          formatNotification(
+            "This username is already taken. Please choose another.",
+            "warning"
+          )
+        );
     }
 
     user.username = username;
     await user.save();
 
+    log({ type: "success", message: `Username set for user: ${user.email}` });
     return res.json({
-      message: "Username set successfully!",
+      ...formatNotification("Username set successfully!", "success"),
       user: sanitizeUser(user),
     });
   } catch (err) {
+    log({ type: "error", message: "Failed to set username", meta: err });
     next(err);
   }
 };
@@ -215,50 +299,75 @@ export const verifyEmail = async (req: Request, res: Response) => {
   const { token } = req.query;
 
   if (!token || typeof token !== "string") {
+    log({ type: "error", message: "Invalid or missing verification token." });
     return res
       .status(400)
-      .json({ message: "Invalid or missing verification token." });
+      .json(
+        formatNotification("Invalid or missing verification token.", "error")
+      );
   }
 
   const user = await User.findOne({ verificationToken: token });
 
   if (!user) {
-    return res.status(400).json({
-      message:
-        "Invalid or expired verification token. Please request a new one.",
-    });
+    log({ type: "error", message: "Invalid or expired verification token." });
+    return res
+      .status(400)
+      .json(
+        formatNotification(
+          "Invalid or expired verification token. Please request a new one.",
+          "error"
+        )
+      );
   }
 
   user.isVerified = true;
   user.verificationToken = undefined;
   await user.save();
 
-  return res.json({
-    message: "Email verified successfully! You can now log in.",
-  });
+  log({ type: "success", message: `Email verified for user: ${user.email}` });
+  return res.json(
+    formatNotification(
+      "Email verified successfully! You can now log in.",
+      "success"
+    )
+  );
 };
 
 export const resendVerification = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   if (!email) {
+    log({ type: "error", message: "Please provide your email address." });
     return res
       .status(400)
-      .json({ message: "Please provide your email address." });
+      .json(formatNotification("Please provide your email address.", "error"));
   }
 
   const user = await User.findOne({ email });
 
   if (!user) {
+    log({
+      type: "error",
+      message: "No account found with this email address.",
+    });
     return res
       .status(400)
-      .json({ message: "No account found with this email address." });
+      .json(
+        formatNotification("No account found with this email address.", "error")
+      );
   }
 
   if (user.isVerified) {
+    log({ type: "warning", message: "This email is already verified." });
     return res
       .status(400)
-      .json({ message: "This email is already verified. Please log in." });
+      .json(
+        formatNotification(
+          "This email is already verified. Please log in.",
+          "warning"
+        )
+      );
   }
 
   const token = crypto.randomBytes(32).toString("hex");

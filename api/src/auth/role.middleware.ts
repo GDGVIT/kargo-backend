@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { IUser } from "../types/user.types";
+import { log, formatNotification } from "../utils/logger";
 
 // Middleware to check if user is admin or superadmin
 export function ensureAdmin(
@@ -11,7 +12,8 @@ export function ensureAdmin(
   if (user && (user.role === "admin" || user.role === "superadmin")) {
     next();
   } else {
-    res.status(403).json({ message: "Admin access required" });
+    log({ type: "error", message: "Admin access required" });
+    res.status(403).json(formatNotification("Admin access required", "error"));
   }
 }
 
@@ -25,6 +27,9 @@ export function ensureSuperadmin(
   if (user && user.role === "superadmin") {
     next();
   } else {
-    res.status(403).json({ message: "Superadmin access required" });
+    log({ type: "error", message: "Superadmin access required" });
+    res
+      .status(403)
+      .json(formatNotification("Superadmin access required", "error"));
   }
 }

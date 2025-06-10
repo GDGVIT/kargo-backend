@@ -16,6 +16,7 @@ import applicationRoutes from "./routes/application.routes";
 import userRoutes from "./routes/user.routes";
 import planRoutes from "./routes/plan.routes";
 import userPlanRoutes from "./routes/user.plan.routes";
+import { log } from "./utils/logger";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
@@ -26,6 +27,13 @@ const production = process.env.NODE_ENV === "production";
 if (production) {
   app.set("trust proxy", 1);
 }
+
+log({
+  type: "info",
+  message: `Server starting at ${new Date().toISOString()} | ENV: ${
+    process.env.NODE_ENV
+  }`,
+});
 
 app.use(
   cors({

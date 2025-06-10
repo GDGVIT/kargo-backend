@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model";
+import { log, formatNotification } from "../utils/logger";
 
 const { GITHUB_APP_ID, GITHUB_APP_SLUG, GITHUB_PRIVATE_KEY } = process.env;
 
@@ -40,7 +41,12 @@ export const githubCallback = async (req: Request, res: Response) => {
   const user = await getUserFromSession(req);
 
   if (!user || !installationId) {
-    return res.status(400).send("Missing user session or installation ID.");
+    log({ type: "error", message: "Missing user session or installation ID." });
+    return res
+      .status(400)
+      .json(
+        formatNotification("Missing user session or installation ID.", "error")
+      );
   }
 
   try {
@@ -49,10 +55,18 @@ export const githubCallback = async (req: Request, res: Response) => {
       user.githubInstallationId.push(installationId);
       await user.save();
     }
-    res.status(200).json({ message: "GitHub installation saved." });
+    log({
+      type: "success",
+      message: `GitHub installation saved for user: ${user.email}`,
+    });
+    res
+      .status(200)
+      .json(formatNotification("GitHub installation saved.", "success"));
   } catch (err) {
-    console.error("Error saving installation ID:", err);
-    res.status(500).send("Failed to save installation ID.");
+    log({ type: "error", message: "Error saving installation ID", meta: err });
+    res
+      .status(500)
+      .json(formatNotification("Failed to save installation ID.", "error"));
   }
 };
 
@@ -69,15 +83,21 @@ export const githubRepos = async (req: Request, res: Response) => {
         !user?.githubInstallationId ||
         user.githubInstallationId.length === 0
       ) {
-        return res.status(400).json({ error: "GitHub not connected for user" });
+        log({ type: "warning", message: "GitHub not connected for user" });
+        return res
+          .status(400)
+          .json(formatNotification("GitHub not connected for user", "warning"));
       }
       installationIds = user.githubInstallationId;
     }
 
     if (!Array.isArray(installationIds) || installationIds.length === 0) {
+      log({ type: "error", message: "Invalid or missing installation IDs" });
       return res
         .status(400)
-        .json({ error: "Invalid or missing installation IDs" });
+        .json(
+          formatNotification("Invalid or missing installation IDs", "error")
+        );
     }
 
     const jwtToken = createGitHubJwt();
@@ -169,31 +189,51 @@ export const githubRepos = async (req: Request, res: Response) => {
     }
 
     if (removedInstallationIds.length > 0) {
+      log({
+        type: "warning",
+        message:
+          "Some GitHub installations were invalid and have been removed.",
+      });
       return res.status(400).json({
-        error: `Some GitHub installations were invalid and have been removed. Please reconnect GitHub if needed.`,
+        ...formatNotification(
+          "Some GitHub installations were invalid and have been removed. Please reconnect GitHub if needed.",
+          "warning"
+        ),
         removedInstallationIds,
       });
     }
 
+    log({
+      type: "success",
+      message: `Fetched ${allRepos.length} GitHub repositories`,
+    });
     res.json({ repositories: allRepos });
   } catch (error: any) {
-    console.error(
-      "GitHub /repos error:",
-      error.response?.data || error.message
-    );
-    res.status(500).json({
-      error:
-        error.response?.data?.message ||
-        error.message ||
-        "Internal Server Error",
+    log({
+      type: "error",
+      message: "GitHub /repos error",
+      meta: error.response?.data || error.message,
     });
+    res
+      .status(500)
+      .json(
+        formatNotification(
+          error.response?.data?.message ||
+            error.message ||
+            "Internal Server Error",
+          "error"
+        )
+      );
   }
 };
 
 export const githubInstallationId = async (req: Request, res: Response) => {
   const user = await getUserFromSession(req);
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    log({ type: "error", message: "Not authenticated" });
+    return res
+      .status(401)
+      .json(formatNotification("Not authenticated", "error"));
   }
   res.json({ installation_ids: user.githubInstallationId || [] });
 };
@@ -203,10 +243,16 @@ export const githubSaveInstallationId = async (req: Request, res: Response) => {
   const user = await getUserFromSession(req);
 
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    log({ type: "error", message: "Not authenticated" });
+    return res
+      .status(401)
+      .json(formatNotification("Not authenticated", "error"));
   }
   if (!installation_id) {
-    return res.status(400).json({ error: "Missing installation ID" });
+    log({ type: "error", message: "Missing installation ID" });
+    return res
+      .status(400)
+      .json(formatNotification("Missing installation ID", "error"));
   }
 
   try {
@@ -215,9 +261,17 @@ export const githubSaveInstallationId = async (req: Request, res: Response) => {
       user.githubInstallationId.push(installation_id);
       await user.save();
     }
-    res.status(200).json({ message: "Installation ID saved." });
+    log({
+      type: "success",
+      message: `Installation ID saved for user: ${user.email}`,
+    });
+    res
+      .status(200)
+      .json(formatNotification("Installation ID saved.", "success"));
   } catch (err) {
-    console.error("Error saving installation ID:", err);
-    res.status(500).json({ error: "Failed to save installation ID." });
+    log({ type: "error", message: "Error saving installation ID", meta: err });
+    res
+      .status(500)
+      .json(formatNotification("Failed to save installation ID.", "error"));
   }
 };

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import User from "../models/user.model";
 import { isValidObjectId } from "mongoose";
+import { log, formatNotification } from "../utils/logger";
 
 // Admin: update resources of a user
 export const updateUserResources = async (
@@ -13,22 +14,39 @@ export const updateUserResources = async (
     const { resources } = req.body;
 
     if (!isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid user id" });
+      log({ type: "error", message: "Invalid user id" });
+      return res
+        .status(400)
+        .json(formatNotification("Invalid user id", "error"));
     }
 
     if (!resources) {
-      return res.status(400).json({ message: "Resources are required" });
+      log({ type: "error", message: "Resources are required" });
+      return res
+        .status(400)
+        .json(formatNotification("Resources are required", "error"));
     }
 
     const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      log({ type: "error", message: "User not found" });
+      return res
+        .status(404)
+        .json(formatNotification("User not found", "error"));
     }
 
     user.resources = resources;
     await user.save();
-    return res.json({ message: "Resources updated", user });
+    log({
+      type: "success",
+      message: `Resources updated for user: ${user.email}`,
+    });
+    return res.json({
+      ...formatNotification("Resources updated", "success"),
+      user,
+    });
   } catch (err) {
+    log({ type: "error", message: "Failed to update resources", meta: err });
     next(err);
   }
 };
@@ -57,20 +75,34 @@ export const updateUserRole = async (
       (req.user as any)._id?.toString() === id &&
       role !== "superadmin"
     ) {
+      log({ type: "error", message: "Superadmin cannot demote themselves" });
       return res
         .status(403)
-        .json({ message: "Superadmin cannot demote themselves" });
+        .json(
+          formatNotification("Superadmin cannot demote themselves", "error")
+        );
     }
 
     const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      log({ type: "error", message: "User not found" });
+      return res
+        .status(404)
+        .json(formatNotification("User not found", "error"));
     }
 
     user.role = role;
     await user.save();
-    return res.json({ message: `User role updated to ${role}` });
+    log({
+      type: "success",
+      message: `User role updated to ${role} for user: ${user.email}`,
+    });
+    return res.json({
+      ...formatNotification(`User role updated to ${role}`, "success"),
+      user,
+    });
   } catch (err) {
+    log({ type: "error", message: "Failed to update user role", meta: err });
     next(err);
   }
 };
@@ -86,22 +118,43 @@ export const updateUserExtraResources = async (
     const { extraResources } = req.body;
 
     if (!isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid user id" });
+      log({ type: "error", message: "Invalid user id" });
+      return res
+        .status(400)
+        .json(formatNotification("Invalid user id", "error"));
     }
 
     if (!extraResources) {
-      return res.status(400).json({ message: "Extra resources are required" });
+      log({ type: "error", message: "Extra resources are required" });
+      return res
+        .status(400)
+        .json(formatNotification("Extra resources are required", "error"));
     }
 
     const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      log({ type: "error", message: "User not found" });
+      return res
+        .status(404)
+        .json(formatNotification("User not found", "error"));
     }
 
     user.extraResources = extraResources;
     await user.save();
-    return res.json({ message: "Extra resources updated", user });
+    log({
+      type: "success",
+      message: `Extra resources updated for user: ${user.email}`,
+    });
+    return res.json({
+      ...formatNotification("Extra resources updated", "success"),
+      user,
+    });
   } catch (err) {
+    log({
+      type: "error",
+      message: "Failed to update extra resources",
+      meta: err,
+    });
     next(err);
   }
 };
@@ -118,12 +171,18 @@ export const getUserResourceUsage = async (
         ("id" in req.user ? (req.user as any).id : (req.user as any)._id)) ||
       req.params.id;
     if (!userId) {
-      return res.status(400).json({ message: "User id required" });
+      log({ type: "error", message: "User id required" });
+      return res
+        .status(400)
+        .json(formatNotification("User id required", "error"));
     }
     // Get user with plan and extraResources
     const user = await User.findById(userId).populate("plan");
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      log({ type: "error", message: "User not found" });
+      return res
+        .status(404)
+        .json(formatNotification("User not found", "error"));
     }
     // Calculate allowed resources (plan + extraResources)
     let planResources: any = {};
@@ -171,6 +230,11 @@ export const getUserResourceUsage = async (
     }
     return res.json({ allowed, usage });
   } catch (err) {
+    log({
+      type: "error",
+      message: "Failed to get user resource usage",
+      meta: err,
+    });
     next(err);
   }
 };
@@ -180,10 +244,16 @@ export const upsertRegistryCredential = async (req: Request, res: Response) => {
   const userId = (req.user as any)?._id;
   const { name, registryType, username, token } = req.body;
   if (!name || !registryType || !username || !token) {
-    return res.status(400).json({ message: "All fields are required" });
+    log({ type: "error", message: "All fields are required" });
+    return res
+      .status(400)
+      .json(formatNotification("All fields are required", "error"));
   }
   const user = await User.findById(userId);
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) {
+    log({ type: "error", message: "User not found" });
+    return res.status(404).json(formatNotification("User not found", "error"));
+  }
   const existing = user.credentials?.find(
     (c) => c.name === name && c.registryType === registryType
   );
@@ -194,7 +264,11 @@ export const upsertRegistryCredential = async (req: Request, res: Response) => {
     user.credentials?.push({ name, registryType, username, token });
   }
   await user.save();
-  res.json({ message: "Credential saved", credentials: user.credentials });
+  log({ type: "success", message: `Credential saved for user: ${user.email}` });
+  res.json({
+    ...formatNotification("Credential saved", "success"),
+    credentials: user.credentials,
+  });
 };
 
 // Remove a registry credential by name and type
@@ -202,18 +276,31 @@ export const deleteRegistryCredential = async (req: Request, res: Response) => {
   const userId = (req.user as any)?._id;
   const { name, registryType } = req.body;
   const user = await User.findById(userId);
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) {
+    log({ type: "error", message: "User not found" });
+    return res.status(404).json(formatNotification("User not found", "error"));
+  }
   user.credentials = (user.credentials || []).filter(
     (c) => !(c.name === name && c.registryType === registryType)
   );
   await user.save();
-  res.json({ message: "Credential deleted", credentials: user.credentials });
+  log({
+    type: "success",
+    message: `Credential deleted for user: ${user.email}`,
+  });
+  res.json({
+    ...formatNotification("Credential deleted", "success"),
+    credentials: user.credentials,
+  });
 };
 
 // Get all registry credentials for the authenticated user
 export const getRegistryCredentials = async (req: Request, res: Response) => {
   const userId = (req.user as any)?._id;
   const user = await User.findById(userId);
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) {
+    log({ type: "error", message: "User not found" });
+    return res.status(404).json(formatNotification("User not found", "error"));
+  }
   res.json({ credentials: user.credentials || [] });
 };
