@@ -1,81 +1,10 @@
 import { Request, Response } from "express";
 import axios from "axios";
-import jwt from "jsonwebtoken";
-import User from "../models/user.model";
-import { log, formatNotification } from "../utils/logger";
-import type { IUser } from "../types/user.types";
-import type { Document } from "mongoose";
-import env from "../config/env";
+import { log, formatNotification } from "../../utils/logger";
+import getUserFromSession from "../../utils/github/getUserFromSession";
+import createGitHubJwt from "../../utils/github/createGithubJWT";
 
-const { GITHUB_APP_ID, GITHUB_APP_SLUG, GITHUB_PRIVATE_KEY } = env;
-
-if (!GITHUB_APP_ID || !GITHUB_APP_SLUG || !GITHUB_PRIVATE_KEY) {
-  throw new Error(
-    "Missing essential GitHub App env vars: GITHUB_APP_ID, GITHUB_APP_SLUG, GITHUB_PRIVATE_KEY"
-  );
-}
-
-const privateKey = GITHUB_PRIVATE_KEY.replace(/\\n/g, "\n");
-
-async function getUserFromSession(
-  req: Request
-): Promise<(IUser & Document) | null> {
-  if (!req.user) return null;
-  return User.findById((req.user as any)._id);
-}
-
-function createGitHubJwt() {
-  const now = Math.floor(Date.now() / 1000);
-  return jwt.sign(
-    {
-      iat: now - 60,
-      exp: now + 540,
-      iss: GITHUB_APP_ID,
-    },
-    privateKey,
-    { algorithm: "RS256" }
-  );
-}
-
-export const githubInstall = (_req: Request, res: Response) => {
-  res.redirect(`https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`);
-};
-
-export const githubCallback = async (req: Request, res: Response) => {
-  const installationId = req.body.installation_id as string;
-  const user = await getUserFromSession(req);
-
-  if (!user || !installationId) {
-    log({ type: "error", message: "Missing user session or installation ID." });
-    return res
-      .status(400)
-      .json(
-        formatNotification("Missing user session or installation ID.", "error")
-      );
-  }
-
-  try {
-    if (!user.githubInstallationId?.includes(installationId)) {
-      user.githubInstallationId = user.githubInstallationId || [];
-      user.githubInstallationId.push(installationId);
-      await user.save();
-    }
-    log({
-      type: "success",
-      message: `GitHub installation saved for user: ${user.email}`,
-    });
-    res
-      .status(200)
-      .json(formatNotification("GitHub installation saved.", "success"));
-  } catch (err) {
-    log({ type: "error", message: "Error saving installation ID", meta: err });
-    res
-      .status(500)
-      .json(formatNotification("Failed to save installation ID.", "error"));
-  }
-};
-
-export const githubRepos = async (req: Request, res: Response) => {
+const githubRepos = async (req: Request, res: Response) => {
   try {
     let installationIds: string[] = [];
     let user = null;
@@ -232,51 +161,4 @@ export const githubRepos = async (req: Request, res: Response) => {
   }
 };
 
-export const githubInstallationId = async (req: Request, res: Response) => {
-  const user = await getUserFromSession(req);
-  if (!user) {
-    log({ type: "error", message: "Not authenticated" });
-    return res
-      .status(401)
-      .json(formatNotification("Not authenticated", "error"));
-  }
-  res.json({ installation_ids: user.githubInstallationId || [] });
-};
-
-export const githubSaveInstallationId = async (req: Request, res: Response) => {
-  const { installation_id } = req.body;
-  const user = await getUserFromSession(req);
-
-  if (!user) {
-    log({ type: "error", message: "Not authenticated" });
-    return res
-      .status(401)
-      .json(formatNotification("Not authenticated", "error"));
-  }
-  if (!installation_id) {
-    log({ type: "error", message: "Missing installation ID" });
-    return res
-      .status(400)
-      .json(formatNotification("Missing installation ID", "error"));
-  }
-
-  try {
-    if (!user.githubInstallationId?.includes(installation_id)) {
-      user.githubInstallationId = user.githubInstallationId || [];
-      user.githubInstallationId.push(installation_id);
-      await user.save();
-    }
-    log({
-      type: "success",
-      message: `Installation ID saved for user: ${user.email}`,
-    });
-    res
-      .status(200)
-      .json(formatNotification("Installation ID saved.", "success"));
-  } catch (err) {
-    log({ type: "error", message: "Error saving installation ID", meta: err });
-    res
-      .status(500)
-      .json(formatNotification("Failed to save installation ID.", "error"));
-  }
-};
+export default githubRepos;

@@ -1,10 +1,8 @@
-import {
-  githubInstall,
-  githubCallback,
-  githubRepos,
-  githubInstallationId,
-  githubSaveInstallationId,
-} from "../controllers/github.controller";
+import githubInstall from "../controllers/github/githubInstall.controller";
+import githubCallback from "../controllers/github/githubCallback.controller";
+import githubRepos from "../controllers/github/githubRepos.controller";
+import githubInstallationId from "../controllers/github/githubInstallationID.controller";
+import githubSaveInstallationID from "../controllers/github/githubSaveInstallationId.controller";
 import { Router } from "express";
 
 const router = Router();
@@ -20,7 +18,7 @@ router.get("/installation-id", (req, res) => {
   githubInstallationId(req, res);
 });
 router.post("/installation-id", (req, res) => {
-  githubSaveInstallationId(req, res);
+  githubSaveInstallationID(req, res);
 });
 
 export default router;
