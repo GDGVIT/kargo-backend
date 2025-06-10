@@ -1,16 +1,14 @@
 import { Router } from "express";
 import { ensureAuthenticated } from "./auth.routes";
 import { ensureAdmin, ensureSuperadmin } from "../auth/role.middleware";
-import {
-  updateUserResources,
-  updateUserRole,
-  updateUserExtraResources,
-  getUserResourceUsage,
-  upsertRegistryCredential,
-  deleteRegistryCredential,
-  getRegistryCredentials,
-} from "../controllers/user.controller";
-import { asyncHandler } from "../utils/asyncHandler";
+import updateUserResources from "../controllers/user/updateUserResources.controller";
+import updateUserRole from "../controllers/user/updateUserRole.controller";
+import getUserResourceUsage from "../controllers/user/getUserResourceUsage.controller";
+import getRegistryCredentials from "../controllers/user/getRegistryCredentials.controller";
+import upsertRegistryCredential from "../controllers/user/upsertRegistryCredential.controller";
+import deleteRegistryCredential from "../controllers/user/deleteRegistryCredential.controller";
+import updateUserExtraResources from "../controllers/user/updateUserExtraResources.controller";
+import { asyncHandler } from "../utils/handlers/asyncHandler";
 import User from "../models/user.model";
 
 const router = Router();

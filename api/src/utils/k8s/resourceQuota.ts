@@ -32,7 +32,7 @@ export async function checkResourceQuota({
   owner: string;
   req: any;
 }): Promise<CheckResourceQuotaResult> {
-  const userModel = await (await import("../models/user.model")).default
+  const userModel = await (await import("../../models/user.model")).default
     .findById(owner)
     .populate("plan");
   if (userModel) {
@@ -68,7 +68,7 @@ export async function checkResourceQuota({
       },
     };
 
-    const ApplicationModel = (await import("../models/application.model"))
+    const ApplicationModel = (await import("../../models/application.model"))
       .default;
     const apps = await ApplicationModel.find({
       owner,

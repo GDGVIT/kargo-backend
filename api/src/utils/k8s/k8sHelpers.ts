@@ -1,3 +1,5 @@
+import env from "../../config/env";
+
 export function formatK8sName(base: string) {
   return base
     .toLowerCase()
@@ -15,7 +17,7 @@ export function getResourceName(type: string, appName: string) {
 }
 
 export const getBaseDomain = () => {
-  let domain = process.env.INGRESS_BASE_DOMAIN || ".vitians.in";
+  let domain = env.INGRESS_BASE_DOMAIN || ".vitians.in";
   if (domain.startsWith(".")) domain = domain.slice(1);
   return domain;
 };

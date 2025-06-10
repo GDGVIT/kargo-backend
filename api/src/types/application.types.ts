@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 export interface IApplication {
+  _id?: mongoose.Types.ObjectId | string;
   name: string;
   imageUrl: string;
   imageTag: string;

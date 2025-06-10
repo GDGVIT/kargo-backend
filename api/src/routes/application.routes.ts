@@ -1,19 +1,17 @@
 import { Router } from "express";
-import {
-  createApplication,
-  getApplications,
-  getApplication,
-  updateApplication,
-  deleteApplication,
-  applyApplication,
-  removeDeployment,
-  removeNamespace,
-  deleteApplicationAndResources,
-  streamApplicationLogs,
-  runDockerHandler,
-} from "../controllers/application.controller";
+import createApplication from "../controllers/application/createApplication.controller";
+import getApplications from "../controllers/application/getApplications.controller";
+import getApplication from "../controllers/application/getApplication.controller";
+import updateApplication from "../controllers/application/updateApplication.controller";
+import deleteApplication from "../controllers/application/deleteApplication.controller";
+import deleteApplicationAndResources from "../controllers/application/deleteApplicationAndResources.controller";
+import applyApplication from "../controllers/application/applyApplication.controller";
+import runDockerHandler from "../controllers/application/runDockerHandler.controller";
+import removeDeployment from "../controllers/application/removeDeployment.controller";
+import removeNamespace from "../controllers/application/removeNamespace.controller";
+import streamApplicationLogs from "../controllers/application/streamApplicationLogs.controller";
 import { ensureAuthenticated } from "./auth.routes";
-import { asyncHandler } from "../utils/asyncHandler";
+import { asyncHandler } from "../utils/handlers/asyncHandler";
 
 const router = Router();
 

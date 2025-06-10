@@ -1,5 +1,3 @@
-import path from "path";
-import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import session from "express-session";
@@ -16,16 +14,23 @@ import applicationRoutes from "./routes/application.routes";
 import userRoutes from "./routes/user.routes";
 import planRoutes from "./routes/plan.routes";
 import userPlanRoutes from "./routes/user.plan.routes";
-
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+import { log } from "./utils/logging/logger";
+import env from "./config/env";
 
 const app = express();
-const frontendUrl = process.env.FRONTEND_URL;
-const production = process.env.NODE_ENV === "production";
+const frontendUrl = env.FRONTEND_URL;
+const production = env.NODE_ENV === "production";
 
 if (production) {
   app.set("trust proxy", 1);
 }
+
+log({
+  type: "info",
+  message: `Server starting at ${new Date().toISOString()} | ENV: ${
+    process.env.NODE_ENV
+  }`,
+});
 
 app.use(
   cors({
@@ -38,7 +43,7 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
 
-const sessionSecret = process.env.SESSION_SECRET;
+const sessionSecret = env.SESSION_SECRET;
 if (!sessionSecret) {
   throw new Error("SESSION_SECRET is not set in environment variables.");
 }
