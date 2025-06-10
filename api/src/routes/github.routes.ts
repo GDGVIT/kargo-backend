@@ -2,7 +2,7 @@ import githubInstall from "../controllers/github/githubInstall.controller";
 import githubCallback from "../controllers/github/githubCallback.controller";
 import githubRepos from "../controllers/github/githubRepos.controller";
 import githubInstallationId from "../controllers/github/githubInstallationID.controller";
-import githubSaveInstallationID from "../controllers/github/githubSaveInstallationId.controller";
+import githubSaveInstallationID from "../controllers/github/githubSaveInstallationID.controller";
 import { Router } from "express";
 
 const router = Router();
