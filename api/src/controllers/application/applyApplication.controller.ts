@@ -209,7 +209,7 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
                     });
                     res.json({
                       ...formatNotification("Application applied", "success"),
-                      output: stdoutNs + stdout2 + stdout + stdout2,
+                      output: stdoutNs + stdout + stdout2,
                     });
                   }
                 );
