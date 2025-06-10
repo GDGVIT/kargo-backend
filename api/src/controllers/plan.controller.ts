@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import Plan from "../models/plan.model";
 import { log, formatNotification } from "../utils/logger";
+import type { IPlan } from "../types/plan.types";
+import type { Document } from "mongoose";
 
 // Create a new plan (admin only)
 export const createPlan = async (
@@ -48,7 +50,7 @@ export const getPlans = async (
   try {
     let plans = await Plan.find();
     // Ensure all plans have resources, requests, and limits fields
-    plans = plans.map((plan: any) => {
+    plans = plans.map((plan: IPlan & Document) => {
       const p = plan.toObject();
       p.resources = p.resources || {};
       p.resources.requests = p.resources.requests || {};
@@ -111,7 +113,9 @@ export const getPlanById = async (
   next: NextFunction
 ) => {
   try {
-    let plan = await Plan.findById(req.params.id);
+    let plan = (await Plan.findById(req.params.id)) as
+      | (IPlan & Document)
+      | null;
     if (!plan) return res.status(404).json({ message: "Plan not found" });
     // Ensure plan has resources, requests, and limits fields
     const p = plan.toObject();

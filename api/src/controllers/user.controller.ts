@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import User from "../models/user.model";
 import { isValidObjectId } from "mongoose";
 import { log, formatNotification } from "../utils/logger";
+import type { IUser, IRegistryCredential } from "../types/user.types";
+import type { Document } from "mongoose";
 
 // Admin: update resources of a user
 export const updateUserResources = async (
@@ -27,7 +29,7 @@ export const updateUserResources = async (
         .json(formatNotification("Resources are required", "error"));
     }
 
-    const user = await User.findById(id);
+    const user = (await User.findById(id)) as (IUser & Document) | null;
     if (!user) {
       log({ type: "error", message: "User not found" });
       return res
@@ -83,7 +85,7 @@ export const updateUserRole = async (
         );
     }
 
-    const user = await User.findById(id);
+    const user = (await User.findById(id)) as (IUser & Document) | null;
     if (!user) {
       log({ type: "error", message: "User not found" });
       return res
@@ -131,7 +133,7 @@ export const updateUserExtraResources = async (
         .json(formatNotification("Extra resources are required", "error"));
     }
 
-    const user = await User.findById(id);
+    const user = (await User.findById(id)) as (IUser & Document) | null;
     if (!user) {
       log({ type: "error", message: "User not found" });
       return res
@@ -249,7 +251,7 @@ export const upsertRegistryCredential = async (req: Request, res: Response) => {
       .status(400)
       .json(formatNotification("All fields are required", "error"));
   }
-  const user = await User.findById(userId);
+  const user = (await User.findById(userId)) as (IUser & Document) | null;
   if (!user) {
     log({ type: "error", message: "User not found" });
     return res.status(404).json(formatNotification("User not found", "error"));
@@ -275,7 +277,7 @@ export const upsertRegistryCredential = async (req: Request, res: Response) => {
 export const deleteRegistryCredential = async (req: Request, res: Response) => {
   const userId = (req.user as any)?._id;
   const { name, registryType } = req.body;
-  const user = await User.findById(userId);
+  const user = (await User.findById(userId)) as (IUser & Document) | null;
   if (!user) {
     log({ type: "error", message: "User not found" });
     return res.status(404).json(formatNotification("User not found", "error"));
@@ -297,10 +299,11 @@ export const deleteRegistryCredential = async (req: Request, res: Response) => {
 // Get all registry credentials for the authenticated user
 export const getRegistryCredentials = async (req: Request, res: Response) => {
   const userId = (req.user as any)?._id;
-  const user = await User.findById(userId);
+  const user = (await User.findById(userId)) as (IUser & Document) | null;
   if (!user) {
     log({ type: "error", message: "User not found" });
     return res.status(404).json(formatNotification("User not found", "error"));
   }
-  res.json({ credentials: user.credentials || [] });
+  const credentials: IRegistryCredential[] = user.credentials || [];
+  res.json({ credentials });
 };

@@ -6,6 +6,8 @@ import User from "../models/user.model";
 import Plan from "../models/plan.model";
 import { sendVerificationEmail } from "../utils/verification";
 import { log, formatNotification } from "../utils/logger";
+import type { IUser } from "../types/user.types";
+import type { Document } from "mongoose";
 
 function isValidUsername(username: string): boolean {
   const usernameRegex = /^[A-Za-z0-9_-]+$/;
@@ -16,7 +18,7 @@ function isValidUsername(username: string): boolean {
   );
 }
 
-function sanitizeUser(user: any) {
+function sanitizeUser(user: any): Partial<IUser> {
   const safeUser = { ...(user.toObject?.() || user) };
   if (safeUser.password) delete safeUser.password;
   if (safeUser.verificationToken) delete safeUser.verificationToken;
@@ -237,7 +239,7 @@ export const setUsername = async (
         );
     }
 
-    const user = req.user as any;
+    const user = req.user as IUser & Document;
 
     if (user.username) {
       log({

@@ -15,6 +15,8 @@ import { mapPorts } from "../utils/portHelpers";
 import { checkResourceQuota } from "../utils/resourceQuota";
 import { runDockerScript } from "../utils/docker-file";
 import { log, formatNotification } from "../utils/logger";
+import type { IApplication } from "../types/application.types";
+import type { Document } from "mongoose";
 
 export const createApplication = asyncHandler(
   async (req: Request, res: Response) => {
@@ -114,7 +116,9 @@ export const getApplications = asyncHandler(
 
 export const getApplication = asyncHandler(
   async (req: Request, res: Response) => {
-    const app = await Application.findById(req.params.id);
+    const app = (await Application.findById(req.params.id)) as
+      | (IApplication & Document)
+      | null;
     if (!app) {
       log({ type: "error", message: "Application not found" });
       return res
@@ -240,7 +244,9 @@ export const deleteApplication = asyncHandler(
 
 export const applyApplication = asyncHandler(
   async (req: Request, res: Response) => {
-    const app = await Application.findById(req.params.id);
+    const app = (await Application.findById(req.params.id)) as
+      | (IApplication & Document)
+      | null;
     if (!app) {
       log({ type: "error", message: "Application not found" });
       return res

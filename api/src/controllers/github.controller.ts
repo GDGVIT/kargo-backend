@@ -3,6 +3,8 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model";
 import { log, formatNotification } from "../utils/logger";
+import type { IUser } from "../types/user.types";
+import type { Document } from "mongoose";
 
 const { GITHUB_APP_ID, GITHUB_APP_SLUG, GITHUB_PRIVATE_KEY } = process.env;
 
@@ -14,7 +16,9 @@ if (!GITHUB_APP_ID || !GITHUB_APP_SLUG || !GITHUB_PRIVATE_KEY) {
 
 const privateKey = GITHUB_PRIVATE_KEY.replace(/\\n/g, "\n");
 
-async function getUserFromSession(req: Request) {
+async function getUserFromSession(
+  req: Request
+): Promise<(IUser & Document) | null> {
   if (!req.user) return null;
   return User.findById((req.user as any)._id);
 }
