@@ -6,6 +6,7 @@ import Plan from "../../models/plan.model";
 import { sendVerificationEmail } from "../../utils/verification";
 import { log, formatNotification } from "../../utils/logger";
 import isValidUsername from "../../utils/auth/isValidUsername";
+import env from "../../config/env";
 
 const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -79,7 +80,7 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
     await sendVerificationEmail({
       to: email,
       token: verificationToken,
-      domain: process.env.CUSTOM_DOMAIN || "http://localhost:3000",
+      domain: env.CUSTOM_DOMAIN,
       name,
     });
 

@@ -8,6 +8,7 @@ import { generateK8sManifests } from "../../utils/k8sManifests";
 import { log, formatNotification } from "../../utils/logger";
 import type { IApplication } from "../../types/application.types";
 import type { Document } from "mongoose";
+import env from "../../config/env";
 
 const applyApplication = asyncHandler(async (req: Request, res: Response) => {
   const app = (await Application.findById(req.params.id)) as
@@ -21,7 +22,7 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
   }
   const userId = (app.owner as any).toString();
   const appId = (app._id as any).toString();
-  const manifestsDir = process.env.MANIFESTS_DIR;
+  const manifestsDir = env.MANIFESTS_DIR;
   if (!manifestsDir) {
     log({ type: "error", message: "MANIFESTS_DIR not set in env" });
     return res

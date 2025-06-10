@@ -3,6 +3,7 @@ import crypto from "crypto";
 import User from "../../models/user.model";
 import { sendVerificationEmail } from "../../utils/verification";
 import { log, formatNotification } from "../../utils/logger";
+import env from "../../config/env";
 
 const resendVerification = async (req: Request, res: Response) => {
   const { email } = req.body;
@@ -47,7 +48,7 @@ const resendVerification = async (req: Request, res: Response) => {
   await sendVerificationEmail({
     to: user.email,
     token,
-    domain: process.env.CUSTOM_DOMAIN || "http://localhost:3000",
+    domain: env.CUSTOM_DOMAIN,
     name: user.name,
   });
 

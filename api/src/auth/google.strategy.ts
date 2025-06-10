@@ -3,13 +3,14 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/user.model";
 import Plan from "../models/plan.model";
 import { log } from "../utils/logger";
+import env from "../config/env";
 
 export function setupGoogleStrategy() {
   passport.use(
     new GoogleStrategy(
       {
-        clientID: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        clientID: env.GOOGLE_CLIENT_ID!,
+        clientSecret: env.GOOGLE_CLIENT_SECRET!,
         callbackURL: "/api/auth/google/callback",
       },
       async (_accessToken, _refreshToken, profile, done) => {

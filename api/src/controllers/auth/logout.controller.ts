@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { log, formatNotification } from "../../utils/logger";
+import env from "../../config/env";
 
 const logout = (req: Request, res: Response) => {
   req.logout((err) => {
@@ -10,7 +11,7 @@ const logout = (req: Request, res: Response) => {
 
     res.clearCookie("connect.sid", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       sameSite: "lax",
     });
 

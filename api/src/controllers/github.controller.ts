@@ -5,8 +5,9 @@ import User from "../models/user.model";
 import { log, formatNotification } from "../utils/logger";
 import type { IUser } from "../types/user.types";
 import type { Document } from "mongoose";
+import env from "../config/env";
 
-const { GITHUB_APP_ID, GITHUB_APP_SLUG, GITHUB_PRIVATE_KEY } = process.env;
+const { GITHUB_APP_ID, GITHUB_APP_SLUG, GITHUB_PRIVATE_KEY } = env;
 
 if (!GITHUB_APP_ID || !GITHUB_APP_SLUG || !GITHUB_PRIVATE_KEY) {
   throw new Error(

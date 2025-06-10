@@ -3,13 +3,14 @@ import { Strategy as GitHubStrategy } from "passport-github2";
 import User from "../models/user.model";
 import Plan from "../models/plan.model";
 import { log } from "../utils/logger";
+import env from "../config/env";
 
 export function setupGitHubStrategy() {
   passport.use(
     new GitHubStrategy(
       {
-        clientID: process.env.GITHUB_CLIENT_ID!,
-        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+        clientID: env.GITHUB_CLIENT_ID!,
+        clientSecret: env.GITHUB_CLIENT_SECRET!,
         callbackURL: "/api/auth/github/callback",
         scope: ["user:email"],
       },

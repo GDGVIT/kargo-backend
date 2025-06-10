@@ -5,6 +5,7 @@ import { exec } from "child_process";
 import Application from "../../models/application.model";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { log, formatNotification } from "../../utils/logger";
+import env from "../../config/env";
 
 const deleteApplicationAndResources = asyncHandler(
   async (req: Request, res: Response) => {
@@ -19,7 +20,7 @@ const deleteApplicationAndResources = asyncHandler(
     const namespace = app.namespace;
     const userId = (app.owner as any).toString();
     const appId = (app._id as any).toString();
-    const manifestsDir = process.env.MANIFESTS_DIR;
+    const manifestsDir = env.MANIFESTS_DIR;
     const appDir = manifestsDir ? path.join(manifestsDir, userId, appId) : null;
 
     // Check if namespace exists before attempting to delete

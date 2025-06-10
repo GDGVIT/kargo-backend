@@ -4,6 +4,7 @@ import { exec } from "child_process";
 import Application from "../../models/application.model";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { log, formatNotification } from "../../utils/logger";
+import env from "../../config/env";
 
 const removeDeployment = asyncHandler(async (req: Request, res: Response) => {
   const app = await Application.findById(req.params.id);
@@ -15,7 +16,7 @@ const removeDeployment = asyncHandler(async (req: Request, res: Response) => {
   }
   const userId = (app.owner as any).toString();
   const appId = (app._id as any).toString();
-  const manifestsDir = process.env.MANIFESTS_DIR;
+  const manifestsDir = env.MANIFESTS_DIR;
   if (!manifestsDir) {
     log({ type: "error", message: "MANIFESTS_DIR not set in env" });
     return res
