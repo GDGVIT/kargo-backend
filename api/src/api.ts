@@ -4,10 +4,6 @@ import session from "express-session";
 import passport from "passport";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
-
-import "./auth/passport";
-import "./auth/local.strategy";
-
 import authRoutes from "./routes/auth.routes";
 import githubRoutes from "./routes/github.routes";
 import applicationRoutes from "./routes/application.routes";
@@ -16,6 +12,8 @@ import planRoutes from "./routes/plan.routes";
 import userPlanRoutes from "./routes/user.plan.routes";
 import { log } from "./utils/logging/logger";
 import env from "./config/env";
+import "./auth/passport";
+import "./auth/local.strategy";
 
 const app = express();
 const frontendUrl = env.FRONTEND_URL;
@@ -28,7 +26,7 @@ if (production) {
 log({
   type: "info",
   message: `Server starting at ${new Date().toISOString()} | ENV: ${
-    process.env.NODE_ENV
+    env.NODE_ENV
   }`,
 });
 

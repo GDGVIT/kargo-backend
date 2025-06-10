@@ -50,7 +50,10 @@ const env = {
   // GitHub App credentials
   GITHUB_APP_ID: process.env.GITHUB_APP_ID,
   GITHUB_APP_SLUG: process.env.GITHUB_APP_SLUG,
-  GITHUB_PRIVATE_KEY: process.env.GITHUB_PRIVATE_KEY || "",
+  GITHUB_PRIVATE_KEY: (process.env.GITHUB_PRIVATE_KEY || "").replace(
+    /\\n/g,
+    "\n"
+  ),
 
   // SMTP configuration for sending emails
   SMTP_HOST: process.env.SMTP_HOST,
@@ -84,7 +87,5 @@ if (missingVars.length > 0) {
     `Missing required environment variables: ${missingVars.join(", ")}`
   );
 }
-
-export const privateKey = env.GITHUB_PRIVATE_KEY.replace(/\\n/g, "\n");
 
 export default env;

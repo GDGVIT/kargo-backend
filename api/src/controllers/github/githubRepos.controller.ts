@@ -8,13 +8,31 @@ const githubRepos = async (req: Request, res: Response) => {
   try {
     let installationIds: string[] = [];
     let user = null;
+    let userChanged = false;
+
+    // Always get user from session if possible
+    user = await getUserFromSession(req);
 
     if (req.query.installation_ids) {
       installationIds = (req.query.installation_ids as string).split(",");
-    } else {
-      user = await getUserFromSession(req);
+      // If user exists, filter their githubInstallationId to only keep valid ones
       if (
-        !user?.githubInstallationId ||
+        user &&
+        user.githubInstallationId &&
+        Array.isArray(user.githubInstallationId)
+      ) {
+        const validIds = new Set(installationIds);
+        const before = user.githubInstallationId.length;
+        user.githubInstallationId = user.githubInstallationId.filter(
+          (id: string) => validIds.has(id)
+        );
+        if (user.githubInstallationId.length !== before) {
+          userChanged = true;
+        }
+      }
+    } else if (user) {
+      if (
+        !user.githubInstallationId ||
         user.githubInstallationId.length === 0
       ) {
         log({ type: "warning", message: "GitHub not connected for user" });
@@ -37,7 +55,6 @@ const githubRepos = async (req: Request, res: Response) => {
     const jwtToken = createGitHubJwt();
     let allRepos: any[] = [];
     let removedInstallationIds: string[] = [];
-    let userChanged = false;
 
     for (const installationId of installationIds) {
       try {
@@ -100,18 +117,22 @@ const githubRepos = async (req: Request, res: Response) => {
         }));
         allRepos = allRepos.concat(extendedRepos);
       } catch (error: any) {
-        // If 404, remove the installationId from user and DB
-        if (
-          error.response &&
-          error.response.status === 404 &&
-          user &&
-          user.githubInstallationId?.includes(installationId)
-        ) {
-          user.githubInstallationId = user.githubInstallationId.filter(
+        // If 404, 401, or 403, remove the installationId from user and DB
+        if (error.response && [404, 401, 403].includes(error.response.status)) {
+          // Remove from current request's installationIds
+          installationIds = installationIds.filter(
             (id: string) => id !== installationId
           );
+          // Remove from user DB if user exists
+          if (user && user.githubInstallationId?.includes(installationId)) {
+            user.githubInstallationId = user.githubInstallationId.filter(
+              (id: string) => id !== installationId
+            );
+            userChanged = true;
+          }
           removedInstallationIds.push(installationId);
-          userChanged = true;
+          // Continue to next installationId instead of throwing
+          continue;
         } else {
           throw error;
         }
