@@ -15,12 +15,10 @@ const streamApplicationLogs = asyncHandler(
     }
     const namespace = app.namespace;
     // Get pod name by label selector (assume 1 pod per deployment)
-    console.log(
-      "[streamApplicationLogs] Using namespace:",
-      namespace,
-      "app:",
-      app.name
-    );
+    log({
+      type: "info",
+      message: `[streamApplicationLogs] Using namespace: ${namespace}, app: ${app.name}`,
+    });
     const getPod = spawn(
       "kubectl",
       [
