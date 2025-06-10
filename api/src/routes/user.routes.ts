@@ -8,7 +8,7 @@ import getRegistryCredentials from "../controllers/user/getRegistryCredentials.c
 import upsertRegistryCredential from "../controllers/user/upsertRegistryCredential.controller";
 import deleteRegistryCredential from "../controllers/user/deleteRegistryCredential.controller";
 import updateUserExtraResources from "../controllers/user/updateUserExtraResources.controller";
-import { asyncHandler } from "../utils/asyncHandler";
+import { asyncHandler } from "../utils/handlers/asyncHandler";
 import User from "../models/user.model";
 
 const router = Router();

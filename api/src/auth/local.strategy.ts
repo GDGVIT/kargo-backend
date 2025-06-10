@@ -3,7 +3,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcryptjs";
 import User from "../models/user.model";
 import Plan from "../models/plan.model";
-import { log } from "../utils/logger";
+import { log } from "../utils/logging/logger";
 
 passport.use(
   new LocalStrategy(

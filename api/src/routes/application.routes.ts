@@ -11,7 +11,7 @@ import removeDeployment from "../controllers/application/removeDeployment.contro
 import removeNamespace from "../controllers/application/removeNamespace.controller";
 import streamApplicationLogs from "../controllers/application/streamApplicationLogs.controller";
 import { ensureAuthenticated } from "./auth.routes";
-import { asyncHandler } from "../utils/asyncHandler";
+import { asyncHandler } from "../utils/handlers/asyncHandler";
 
 const router = Router();
 

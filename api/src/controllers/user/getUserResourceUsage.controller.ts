@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import User from "../../models/user.model";
-import { log, formatNotification } from "../../utils/logger";
+import { log, formatNotification } from "../../utils/logging/logger";
 
 // Get total resource usage and allowed for a user
 const getUserResourceUsage = async (

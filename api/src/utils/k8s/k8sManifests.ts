@@ -1,5 +1,5 @@
 import { dump } from "js-yaml";
-import type { IApplication } from "../types/application.types";
+import type { IApplication } from "../../types/application.types";
 
 function stripDates(obj: any): any {
   const seen = new WeakSet();

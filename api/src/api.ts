@@ -1,4 +1,3 @@
-import path from "path";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import session from "express-session";
@@ -15,7 +14,7 @@ import applicationRoutes from "./routes/application.routes";
 import userRoutes from "./routes/user.routes";
 import planRoutes from "./routes/plan.routes";
 import userPlanRoutes from "./routes/user.plan.routes";
-import { log } from "./utils/logger";
+import { log } from "./utils/logging/logger";
 import env from "./config/env";
 
 const app = express();

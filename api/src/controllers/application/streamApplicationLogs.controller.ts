@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { spawn } from "child_process";
 import Application from "../../models/application.model";
-import { asyncHandler } from "../../utils/asyncHandler";
-import { log, formatNotification } from "../../utils/logger";
+import { asyncHandler } from "../../utils/handlers/asyncHandler";
+import { log, formatNotification } from "../../utils/logging/logger";
 
 const streamApplicationLogs = asyncHandler(
   async (req: Request, res: Response) => {

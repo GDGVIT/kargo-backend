@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import Application from "../../models/application.model";
-import { asyncHandler } from "../../utils/asyncHandler";
-import { getNamespace, getResourceName } from "../../utils/k8sHelpers";
-import { mapPorts } from "../../utils/portHelpers";
-import { checkResourceQuota } from "../../utils/resourceQuota";
-import { log, formatNotification } from "../../utils/logger";
+import { asyncHandler } from "../../utils/handlers/asyncHandler";
+import { getNamespace, getResourceName } from "../../utils/k8s/k8sHelpers";
+import { mapPorts } from "../../utils/k8s/portHelpers";
+import { checkResourceQuota } from "../../utils/k8s/resourceQuota";
+import { log, formatNotification } from "../../utils/logging/logger";
 
 const updateApplication = asyncHandler(async (req: Request, res: Response) => {
   const {

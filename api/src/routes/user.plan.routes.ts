@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { ensureAuthenticated } from "./auth.routes";
-import { asyncHandler } from "../utils/asyncHandler";
+import { asyncHandler } from "../utils/handlers/asyncHandler";
 import User from "../models/user.model";
 import Plan from "../models/plan.model";
 

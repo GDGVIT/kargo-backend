@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import User from "../../models/user.model";
-import { log, formatNotification } from "../../utils/logger";
+import { log, formatNotification } from "../../utils/logging/logger";
 
 const verifyEmail = async (req: Request, res: Response) => {
   const { token } = req.query;

@@ -1,6 +1,5 @@
-import { Router, Request, Response, NextFunction } from "express";
-import passport from "passport";
-import { asyncHandler } from "../utils/asyncHandler";
+import { Router, Response, NextFunction } from "express";
+import { asyncHandler } from "../utils/handlers/asyncHandler";
 import register from "../controllers/auth/register.controller";
 import login from "../controllers/auth/login.controller";
 import logout from "../controllers/auth/logout.controller";

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import Plan from "../../models/plan.model";
-import { log, formatNotification } from "../../utils/logger";
+import { log, formatNotification } from "../../utils/logging/logger";
 import type { IPlan } from "../../types/plan.types";
 import type { Document } from "mongoose";
 

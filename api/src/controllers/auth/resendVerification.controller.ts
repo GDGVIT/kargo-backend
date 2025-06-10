@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import User from "../../models/user.model";
-import { sendVerificationEmail } from "../../utils/verification";
-import { log, formatNotification } from "../../utils/logger";
+import { sendVerificationEmail } from "../../utils/auth/verification";
+import { log, formatNotification } from "../../utils/logging/logger";
 import env from "../../config/env";
 
 const resendVerification = async (req: Request, res: Response) => {

@@ -2,7 +2,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/user.model";
 import Plan from "../models/plan.model";
-import { log } from "../utils/logger";
+import { log } from "../utils/logging/logger";
 import env from "../config/env";
 
 export function setupGoogleStrategy() {

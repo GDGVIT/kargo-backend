@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import User from "../../models/user.model";
-import { log, formatNotification } from "../../utils/logger";
+import { log, formatNotification } from "../../utils/logging/logger";
 import sanitizeUser from "../../utils/auth/sanitizeUser";
 
 const getMe = async (req: Request, res: Response) => {

@@ -3,8 +3,8 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import User from "../../models/user.model";
 import Plan from "../../models/plan.model";
-import { sendVerificationEmail } from "../../utils/verification";
-import { log, formatNotification } from "../../utils/logger";
+import { sendVerificationEmail } from "../../utils/auth/verification";
+import { log, formatNotification } from "../../utils/logging/logger";
 import isValidUsername from "../../utils/auth/isValidUsername";
 import env from "../../config/env";
 
