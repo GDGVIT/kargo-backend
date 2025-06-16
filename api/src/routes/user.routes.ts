@@ -49,10 +49,10 @@ router.get(
   asyncHandler(async (_req, res) => {
     const users = await User.find(
       {},
-      "_id name email role username plan"
+      "_id name email role username plan extraResources"
     ).populate({
       path: "plan",
-      select: "_id name isDefault",
+      select: "_id name isDefault resources", // <-- include resources
     });
     res.json({ users });
   })
