@@ -10,6 +10,7 @@ import runDockerHandler from "../controllers/application/runDockerHandler.contro
 import removeDeployment from "../controllers/application/removeDeployment.controller";
 import removeNamespace from "../controllers/application/removeNamespace.controller";
 import streamApplicationLogs from "../controllers/application/streamApplicationLogs.controller";
+import getApplicationMetrics from "../controllers/application/getApplicationMetrics.controller";
 import { ensureAuthenticated } from "./auth.routes";
 import { asyncHandler } from "../utils/handlers/asyncHandler";
 
@@ -27,6 +28,7 @@ router.post("/:id/apply", applyApplication);
 router.post("/:id/remove-deployment", removeDeployment);
 router.post("/:id/remove-namespace", removeNamespace);
 router.get("/:id/logs", streamApplicationLogs);
+router.get("/:id/metrics", getApplicationMetrics);
 router.post("/run-docker", asyncHandler(runDockerHandler));
 
 export default router;
