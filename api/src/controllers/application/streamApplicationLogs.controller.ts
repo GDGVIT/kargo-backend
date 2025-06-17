@@ -4,6 +4,9 @@ import Application from "../../models/application.model";
 import { asyncHandler } from "../../utils/handlers/asyncHandler";
 import { log, formatNotification } from "../../utils/logging/logger";
 
+const LOG_TAIL_COUNT = 200;
+const LOG_THROTTLE_MS = 100;
+
 const streamApplicationLogs = asyncHandler(
   async (req: Request, res: Response) => {
     const app = await Application.findById(req.params.id);
@@ -14,12 +17,12 @@ const streamApplicationLogs = asyncHandler(
         .json(formatNotification("Application not found", "error"));
     }
     const namespace = app.namespace;
-    // Get pod name by label selector (assume 1 pod per deployment)
     log({
       type: "info",
       message: `[streamApplicationLogs] Using namespace: ${namespace}, app: ${app.name}`,
     });
-    const getPod = spawn(
+    // Get all pod names for the app
+    const getPods = spawn(
       "kubectl",
       [
         "get",
@@ -29,57 +32,102 @@ const streamApplicationLogs = asyncHandler(
         "-l",
         `app=${app.name}`,
         "-o",
-        "jsonpath={.items[0].metadata.name}",
+        "jsonpath={.items[*].metadata.name}",
       ],
       { stdio: ["ignore", "pipe", "pipe"] }
     );
-    let podName = "";
-    (getPod.stdout as NodeJS.ReadableStream).on("data", (data: Buffer) => {
-      podName += data.toString();
+    let podsOutput = "";
+    (getPods.stdout as NodeJS.ReadableStream).on("data", (data: Buffer) => {
+      podsOutput += data.toString();
     });
-    (getPod.stderr as NodeJS.ReadableStream).on("data", (data: Buffer) => {
+    (getPods.stderr as NodeJS.ReadableStream).on("data", (data: Buffer) => {
       log({
         type: "error",
-        message: `[streamApplicationLogs] getPod stderr: ${data.toString()}`,
+        message: `[streamApplicationLogs] getPods stderr: ${data.toString()}`,
       });
     });
-    getPod.on("close", (_code: number) => {
+    getPods.on("close", (_code: number) => {
+      const podNames = podsOutput.trim().split(/\s+/).filter(Boolean);
       log({
-        type: podName ? "info" : "error",
-        message: `[streamApplicationLogs] Pod name found: ${podName}`,
+        type: podNames.length ? "info" : "error",
+        message: `[streamApplicationLogs] Pod names found: ${podNames.join(
+          ", "
+        )}`,
       });
-      if (!podName) {
-        log({ type: "error", message: "Pod not found" });
-        res.status(404).json(formatNotification("Pod not found", "error"));
+      if (!podNames.length) {
+        log({ type: "error", message: "No pods found" });
+        res.status(404).json(formatNotification("No pods found", "error"));
         return;
       }
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
       res.flushHeaders();
-      const logs = spawn(
-        "kubectl",
-        ["logs", podName, "-n", namespace ?? "default", "-f"],
-        { stdio: ["ignore", "pipe", "pipe"] }
-      );
-      (logs.stdout as NodeJS.ReadableStream).on("data", (data: Buffer) => {
-        res.write(`data: ${data.toString().replace(/\n/g, "\ndata: ")}\n\n`);
+      // For each pod, stream logs
+      const logProcesses = podNames.map((podName) => {
+        return {
+          podName,
+          proc: spawn(
+            "kubectl",
+            [
+              "logs",
+              podName,
+              "-n",
+              namespace ?? "default",
+              `--tail=${LOG_TAIL_COUNT}`,
+              "-f",
+            ],
+            { stdio: ["ignore", "pipe", "pipe"] }
+          ),
+          buffer: "",
+          sending: false,
+        };
       });
-      (logs.stderr as NodeJS.ReadableStream).on("data", (data: Buffer) => {
-        log({
-          type: "error",
-          message: `[streamApplicationLogs] logs stderr: ${data.toString()}`,
-        });
-        res.write(
-          `data: [stderr] ${data.toString().replace(/\n/g, "\ndata: ")}\n\n`
+      // Helper to send logs for a pod
+      const sendBufferedLogs = (logObj: any) => {
+        if (logObj.sending || !logObj.buffer) return;
+        logObj.sending = true;
+        // Prefix each line with timestamp and pod name
+        const lines = logObj.buffer.split("\n").filter(Boolean);
+        for (const line of lines) {
+          const timestamp = new Date().toISOString();
+          res.write(`data: ${timestamp} [${logObj.podName}] ${line}\n\n`);
+        }
+        logObj.buffer = "";
+        setTimeout(() => {
+          logObj.sending = false;
+          if (logObj.buffer) sendBufferedLogs(logObj);
+        }, LOG_THROTTLE_MS);
+      };
+      // Attach listeners for each pod log process
+      logProcesses.forEach((logObj) => {
+        (logObj.proc.stdout as NodeJS.ReadableStream).on(
+          "data",
+          (data: Buffer) => {
+            logObj.buffer += data.toString();
+            sendBufferedLogs(logObj);
+          }
         );
-      });
-      logs.on("close", () => {
-        res.write("event: end\ndata: [log stream ended]\n\n");
-        res.end();
+        (logObj.proc.stderr as NodeJS.ReadableStream).on(
+          "data",
+          (data: Buffer) => {
+            log({
+              type: "error",
+              message: `[streamApplicationLogs] logs stderr: ${data.toString()}`,
+            });
+            logObj.buffer += `[stderr] ${data.toString()}`;
+            sendBufferedLogs(logObj);
+          }
+        );
+        logObj.proc.on("close", () => {
+          const timestamp = new Date().toISOString();
+          res.write(
+            `event: end\ndata: ${timestamp} [${logObj.podName}] [log stream ended]\n\n`
+          );
+        });
       });
       req.on("close", () => {
-        logs.kill();
+        logProcesses.forEach((logObj) => logObj.proc.kill());
       });
     });
   }
