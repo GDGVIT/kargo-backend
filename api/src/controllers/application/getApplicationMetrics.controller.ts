@@ -14,13 +14,18 @@ const getApplicationMetrics = asyncHandler(
         .json(formatNotification("Application not found", "error"));
     }
     const namespace = app.namespace || "default";
-    const appName = app.name;
-    // Use kubectl top pod to get metrics for all pods in the namespace (no label selector)
+    // Use a unique label for the deployment, fallback to app name if not present
+    const deploymentLabel = app.deploymentName
+      ? `deployment=${app.deploymentName}`
+      : `app=${app.name}`;
+    // Use kubectl top pod with label selector to get metrics for this deployment only
     const kubectl = spawn("kubectl", [
       "top",
       "pod",
       "-n",
       namespace,
+      "-l",
+      deploymentLabel,
       "--no-headers",
     ]);
     let output = "";
@@ -42,6 +47,7 @@ const getApplicationMetrics = asyncHandler(
       const metrics = output
         .trim()
         .split("\n")
+        .filter(Boolean)
         .map((line) => {
           const [pod, cpu, memory] = line.split(/\s+/);
           return { pod, cpu: parseInt(cpu, 10), memory: parseInt(memory, 10) };

@@ -62,6 +62,63 @@ function generateIngressYaml(sanitizedApp: any, namespace: string): string {
     `  namespace: ${namespace}`,
     `  labels:`,
     `    app: ${sanitizedApp.name}`,
+    `    deployment: ${sanitizedApp.deploymentName}`,
+    `  annotations:`,
+    `    kubernetes.io/ingress.class: traefik`,
+    `    cert-manager.io/cluster-issuer: letsencrypt-wildcard`,
+    `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
+    `    nginx.ingress.kubernetes.io/ssl-redirect: "true"`,
+    `spec:`,
+    `  rules:`,
+    rules,
+    `  tls:`,
+    `    - hosts:`,
+    ...hosts.map((h: string) => `        - ${h}`),
+    `      secretName: wildcard-tls`,
+  ].join("\n");
+}
+
+// Add deployment label to all relevant resources
+function generateIngressYamlWithDeployment(
+  sanitizedApp: any,
+  namespace: string
+): string {
+  const ingressPorts = (sanitizedApp.ports || []).filter(
+    (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
+  );
+  if (ingressPorts.length === 0) return "";
+  const rules = ingressPorts
+    .map((p: any) => {
+      let host = p.subdomain;
+      if (host.endsWith(".")) host = host.slice(0, -1);
+      return [
+        `    - host: ${host}`,
+        `      http:`,
+        `        paths:`,
+        `          - path: /`,
+        `            pathType: Prefix`,
+        `            backend:`,
+        `              service:`,
+        `                name: ${sanitizedApp.serviceName}`,
+        `                port:`,
+        `                  number: ${p.containerPort}`,
+      ].join("\n");
+    })
+    .join("\n");
+  // Collect all hosts for TLS
+  const hosts = ingressPorts.map((p: any) =>
+    p.subdomain.endsWith(".") ? p.subdomain.slice(0, -1) : p.subdomain
+  );
+  return [
+    `---`,
+    `apiVersion: networking.k8s.io/v1`,
+    `kind: Ingress`,
+    `metadata:`,
+    `  name: ${sanitizedApp.name}-ingress`,
+    `  namespace: ${namespace}`,
+    `  labels:`,
+    `    app: ${sanitizedApp.name}`,
+    `    deployment: ${sanitizedApp.deploymentName}`,
     `  annotations:`,
     `    kubernetes.io/ingress.class: traefik`,
     `    cert-manager.io/cluster-issuer: letsencrypt-wildcard`,
@@ -334,7 +391,10 @@ export function generateK8sManifests(app: IApplication): {
   const servicePortsBlock = generateServicePortsBlock(sanitizedApp.ports);
   const secretYaml = generateSecretYaml(sanitizedApp, namespace);
   const imagePullSecretYaml = generateImagePullSecretYaml(app, namespace);
-  const ingressYaml = generateIngressYaml(sanitizedApp, namespace);
+  const ingressYaml = generateIngressYamlWithDeployment(
+    sanitizedApp,
+    namespace
+  );
 
   const deployment = `apiVersion: apps/v1
 kind: Deployment
@@ -343,15 +403,18 @@ metadata:
   namespace: ${namespace}
   labels:
     app: ${sanitizedApp.name}
+    deployment: ${sanitizedApp.deploymentName}
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: ${sanitizedApp.name}
+      deployment: ${sanitizedApp.deploymentName}
   template:
     metadata:
       labels:
         app: ${sanitizedApp.name}
+        deployment: ${sanitizedApp.deploymentName}
     spec:
       containers:
         - name: ${sanitizedApp.name}
@@ -364,8 +427,7 @@ ${envSection}${portsBlock ? portsBlock + "\n" : ""}${
     readinessProbeBlock ? readinessProbeBlock + "\n" : ""
   }${livenessProbeBlock ? livenessProbeBlock + "\n" : ""}${
     affinityBlock ? affinityBlock + "\n" : ""
-  }
-${volumesBlock ? volumesBlock + "\n" : ""}${
+  }${volumesBlock ? volumesBlock + "\n" : ""}${
     tolerationsBlock ? tolerationsBlock : ""
   }${
     app.credentials && app.credentials.length > 0
@@ -380,10 +442,12 @@ metadata:
   namespace: ${namespace}
   labels:
     app: ${sanitizedApp.name}
+    deployment: ${sanitizedApp.deploymentName}
 spec:
   type: ClusterIP
   selector:
     app: ${sanitizedApp.name}
+    deployment: ${sanitizedApp.deploymentName}
   ports:
 ${servicePortsBlock}
 `;
