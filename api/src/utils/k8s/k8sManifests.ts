@@ -419,7 +419,7 @@ spec:
       containers:
         - name: ${sanitizedApp.name}
           image: ${sanitizedApp.imageUrl}:${sanitizedApp.imageTag}
-${envSection}${portsBlock ? portsBlock + "\n" : ""}${
+${envSection ? envSection + "\n" : ""}${portsBlock ? portsBlock + "\n" : ""}${
     commandBlock ? commandBlock + "\n" : ""
   }${argsBlock ? argsBlock + "\n" : ""}${
     resourcesBlock ? resourcesBlock + "\n" : ""
