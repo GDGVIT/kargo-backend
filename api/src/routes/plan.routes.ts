@@ -6,11 +6,22 @@ import createPlan from "../controllers/plans/createPlan.controller";
 import getPlans from "../controllers/plans/getPlans.controller";
 import updatePlan from "../controllers/plans/updatePlan.controller";
 import deletePlan from "../controllers/plans/deletePlan.controller";
+import express from "express";
+import {
+  createOrder,
+  verifyPayment,
+} from "../controllers/plans/razorpay.controller";
 
 const router = Router();
 
 // Public: get a single plan by ID
 router.get("/:id", asyncHandler(getPlanByID));
+
+// Razorpay payment endpoints (public)
+router.post("/:id/create-order", asyncHandler(createOrder));
+router.post("/verify-payment", express.json(), (req, res) => {
+  verifyPayment(req, res);
+});
 
 // All plan management routes require admin
 router.use(ensureAdmin);

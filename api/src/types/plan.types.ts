@@ -15,6 +15,7 @@ export interface IPlan {
     };
   };
   isDefault?: boolean;
+  /** Price in paise (integer) */
   price?: number;
   isActive?: boolean;
 }

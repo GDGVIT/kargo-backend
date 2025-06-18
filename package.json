@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/GDGVIT/kargo-backend/issues"
   },
-  "homepage": "https://github.com/GDGVIT/kargo-backend#readme"
+  "homepage": "https://github.com/GDGVIT/kargo-backend#readme",
+  "dependencies": {
+    "razorpay": "^2.9.6"
+  }
 }

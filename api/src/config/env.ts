@@ -23,6 +23,8 @@ const REQUIRED_ENV_VARS = [
   "INGRESS_BASE_DOMAIN",
   "MANIFESTS_DIR",
   "GROQ",
+  "RAZORPAY_KEY_ID",
+  "RAZORPAY_KEY_SECRET",
 ];
 
 const env = {
@@ -71,6 +73,11 @@ const env = {
 
   // GROQ API key or endpoint
   GROQ: process.env.GROQ,
+
+  // Razorpay
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
 };
 
 const missingVars = REQUIRED_ENV_VARS.filter(

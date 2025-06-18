@@ -16,7 +16,7 @@ const planSchema = new Schema<IPlan & Document>(
       },
     },
     isDefault: { type: Boolean, default: false },
-    price: { type: Number },
+    price: { type: Number /* Price in paise (integer) */ },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
