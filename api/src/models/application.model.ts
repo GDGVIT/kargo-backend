@@ -11,7 +11,6 @@ const ResourceSchema = new Schema(
 
 const PortSchema = new Schema(
   {
-    name: String,
     containerPort: { type: Number, required: true },
     protocol: String,
     subdomain: String,

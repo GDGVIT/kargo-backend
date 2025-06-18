@@ -22,7 +22,11 @@ const updateApplication = asyncHandler(async (req: Request, res: Response) => {
     tolerations,
     affinity,
   } = req.body;
-  const credentials = req.body.credentials || [];
+  let credentials = req.body.credentials;
+  if (credentials === undefined) {
+    const existingApp = await Application.findById(req.params.id);
+    credentials = existingApp?.credentials || [];
+  }
   const owner = (req.user as any)?._id || req.body.owner;
   const namespace = getNamespace(owner.toString(), name);
   const deploymentName = getResourceName("deploy", name);
@@ -72,7 +76,7 @@ const updateApplication = asyncHandler(async (req: Request, res: Response) => {
         tolerations,
         affinity,
         owner,
-        credentials,
+        credentials, // always update credentials
       },
       { new: true }
     );

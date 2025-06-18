@@ -186,11 +186,11 @@ function generateResourcesBlock(resources: any): string {
   if (!resources) return "";
   return `          resources:
             requests:
-              cpu: "${resources.requests?.cpu || "100m"}"
-              memory: "${resources.requests?.memory || "128Mi"}"
+              cpu: "${resources.requests?.cpu || "0m"}"
+              memory: "${resources.requests?.memory || "0Mi"}"
             limits:
-              cpu: "${resources.limits?.cpu || "250m"}"
-              memory: "${resources.limits?.memory || "256Mi"}"`;
+              cpu: "${resources.limits?.cpu || "0m"}"
+              memory: "${resources.limits?.memory || "0Mi"}"`;
 }
 
 function generateVolumeMountsBlock(volumes: any[]): string {

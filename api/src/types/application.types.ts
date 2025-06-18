@@ -15,7 +15,6 @@ export interface IApplication {
     limits?: { cpu?: string; memory?: string };
   };
   ports?: Array<{
-    name?: string;
     containerPort: number;
     protocol?: string;
     subdomain?: string;
