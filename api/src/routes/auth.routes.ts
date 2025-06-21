@@ -1,5 +1,5 @@
 import { Router, Response, NextFunction } from "express";
-import { asyncHandler } from "../utils/handlers/asyncHandler";
+import asyncHandler from "../utils/handlers/asyncHandler";
 import register from "../controllers/auth/register.controller";
 import login from "../controllers/auth/login.controller";
 import logout from "../controllers/auth/logout.controller";
@@ -11,19 +11,9 @@ import getMe from "../controllers/auth/getMe.controller";
 import setUsername from "../controllers/auth/setUsername.controller";
 import verifyEmail from "../controllers/auth/verifyEmail.controller";
 import resendVerification from "../controllers/auth/resendVerification.controller";
+import ensureAuthenticated from "../utils/auth/ensureAuthenticated";
 
 const router = Router();
-
-export function ensureAuthenticated(
-  req: any,
-  res: Response,
-  next: NextFunction
-) {
-  if (typeof req.isAuthenticated === "function" && req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ message: "Not authenticated" });
-}
 
 router.post("/register", asyncHandler(register));
 router.post("/login", asyncHandler(login));

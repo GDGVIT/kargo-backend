@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { ensureAuthenticated } from "./auth.routes";
+import ensureAuthenticated from "../utils/auth/ensureAuthenticated";
 import { ensureAdmin, ensureSuperadmin } from "../auth/role.middleware";
 import updateUserResources from "../controllers/user/updateUserResources.controller";
 import updateUserRole from "../controllers/user/updateUserRole.controller";
@@ -8,9 +8,9 @@ import getRegistryCredentials from "../controllers/user/getRegistryCredentials.c
 import upsertRegistryCredential from "../controllers/user/upsertRegistryCredential.controller";
 import deleteRegistryCredential from "../controllers/user/deleteRegistryCredential.controller";
 import updateUserExtraResources from "../controllers/user/updateUserExtraResources.controller";
-import { asyncHandler } from "../utils/handlers/asyncHandler";
-import User from "../models/user.model";
-import Plan from "../models/plan.model";
+import updateUserPlan from "../controllers/user/updateUserPlan.controller";
+import asyncHandler from "../utils/handlers/asyncHandler";
+import getAllUsers from "../controllers/user/getAllUsers.controller";
 
 const router = Router();
 
@@ -23,32 +23,7 @@ router.put("/:id/resources", ensureAdmin, asyncHandler(updateUserResources));
 router.put("/:id/role", ensureSuperadmin, asyncHandler(updateUserRole));
 
 // Admin or self (if superadmin): assign a plan to a user
-router.put(
-  "/:id/plan",
-  ensureAuthenticated,
-  asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
-    const { planId } = req.body;
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-    const plan = await Plan.findById(planId);
-    if (!plan) return res.status(404).json({ message: "Plan not found" });
-
-    // Allow: admin/superadmin for others, or self if superadmin
-    const reqUser = req.user as any;
-    const isSelf = reqUser && reqUser._id?.toString() === id;
-    const isAdmin =
-      reqUser && (reqUser.role === "admin" || reqUser.role === "superadmin");
-    const isSuperadminSelf = isSelf && reqUser.role === "superadmin";
-    if (!isAdmin && !isSuperadminSelf) {
-      return res.status(403).json({ message: "Not authorized to assign plan" });
-    }
-
-    user.plan = String(plan._id);
-    await user.save();
-    res.json({ message: "Plan assigned to user", user });
-  })
-);
+router.put("/:id/plan", ensureAuthenticated, asyncHandler(updateUserPlan));
 
 // Admin: update extra resources of a user
 router.put(
@@ -72,20 +47,7 @@ router.get(
 );
 
 // GET all users (admin/superadmin only): name, email, role, plan
-router.get(
-  "/",
-  ensureAdmin,
-  asyncHandler(async (_req, res) => {
-    const users = await User.find(
-      {},
-      "_id name email role username plan extraResources"
-    ).populate({
-      path: "plan",
-      select: "_id name isDefault resources", // <-- include resources
-    });
-    res.json({ users });
-  })
-);
+router.get("/", ensureAdmin, asyncHandler(getAllUsers));
 
 // Registry credentials management
 router.get("/me/credentials", asyncHandler(getRegistryCredentials));
