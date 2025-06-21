@@ -9,7 +9,6 @@ import githubRoutes from "./routes/github.routes";
 import applicationRoutes from "./routes/application.routes";
 import userRoutes from "./routes/user.routes";
 import planRoutes from "./routes/plan.routes";
-import userPlanRoutes from "./routes/user.plan.routes";
 import { log } from "./utils/logging/logger";
 import env from "./config/env";
 import "./auth/passport";
@@ -77,6 +76,5 @@ app.use("/api/github", githubRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/plans", planRoutes);
-app.use("/api/users", userPlanRoutes);
 
 export default app;
