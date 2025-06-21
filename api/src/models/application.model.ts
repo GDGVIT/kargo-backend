@@ -1,10 +1,11 @@
 import mongoose, { Document, Schema } from "mongoose";
 import IApplication from "../types/application.types";
 
-const ResourceSchema = new Schema(
+export const ResourceSchema = new Schema(
   {
-    cpu: String,
-    memory: String,
+    cpu: { type: Number, min: 0 }, // vCPU
+    memory: { type: Number, min: 0 }, // MB
+    storage: { type: Number, min: 0 }, // GB
   },
   { _id: false }
 );
