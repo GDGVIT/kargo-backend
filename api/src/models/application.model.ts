@@ -3,7 +3,7 @@ import IApplication from "../types/application.types";
 
 export const ResourceSchema = new Schema(
   {
-    cpu: { type: Number, min: 0 }, // vCPU
+    cpu: { type: Number, min: 0 }, // 0.01 vCPU
     memory: { type: Number, min: 0 }, // MB
     storage: { type: Number, min: 0 }, // GB
   },

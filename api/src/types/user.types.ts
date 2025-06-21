@@ -28,20 +28,24 @@ export default interface IUser {
     requests?: {
       cpu?: string;
       memory?: string;
+      storage?: string;
     };
     limits?: {
       cpu?: string;
       memory?: string;
+      storage?: string;
     };
   };
   extraResources?: {
     requests?: {
       cpu?: string;
       memory?: string;
+      storage?: string;
     };
     limits?: {
       cpu?: string;
       memory?: string;
+      storage?: string;
     };
   };
   plan?: mongoose.Types.ObjectId | string;

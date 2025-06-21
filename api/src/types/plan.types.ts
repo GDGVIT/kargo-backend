@@ -8,10 +8,12 @@ export default interface IPlan {
     requests?: {
       cpu?: string;
       memory?: string;
+      storage?: string;
     };
     limits?: {
       cpu?: string;
       memory?: string;
+      storage?: string;
     };
   };
   isDefault?: boolean;

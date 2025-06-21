@@ -101,7 +101,18 @@ const getApplicationMetrics = asyncHandler(
         // Return metrics and resource requests/limits
         res.json({
           metrics,
-          resources: app.resources || {},
+          resources: {
+            requests: {
+              cpu: app.resources?.requests?.cpu || null,
+              memory: app.resources?.requests?.memory || null,
+              storage: app.resources?.requests?.storage || null,
+            },
+            limits: {
+              cpu: app.resources?.limits?.cpu || null,
+              memory: app.resources?.limits?.memory || null,
+              storage: app.resources?.limits?.storage || null,
+            },
+          },
         });
       } catch (e) {
         log({ type: "error", message: `Failed to parse metrics: ${e}` });

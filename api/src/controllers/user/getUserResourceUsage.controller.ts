@@ -49,11 +49,16 @@ const getUserResourceUsage = async (
         cpu: parse(planResources.requests?.cpu) + parse(extra.requests?.cpu),
         memory:
           parse(planResources.requests?.memory) + parse(extra.requests?.memory),
+        storage:
+          parse(planResources.requests?.storage) +
+          parse(extra.requests?.storage),
       },
       limits: {
         cpu: parse(planResources.limits?.cpu) + parse(extra.limits?.cpu),
         memory:
           parse(planResources.limits?.memory) + parse(extra.limits?.memory),
+        storage:
+          parse(planResources.limits?.storage) + parse(extra.limits?.storage),
       },
     };
     // Sum all app resource usage for this user
@@ -62,14 +67,16 @@ const getUserResourceUsage = async (
       await import("../../models/application.model")
     ).default.find({ owner: userIdForQuery });
     const usage = {
-      requests: { cpu: 0, memory: 0 },
-      limits: { cpu: 0, memory: 0 },
+      requests: { cpu: 0, memory: 0, storage: 0 },
+      limits: { cpu: 0, memory: 0, storage: 0 },
     };
     for (const app of apps) {
       usage.requests.cpu += parse(app.resources?.requests?.cpu);
       usage.requests.memory += parse(app.resources?.requests?.memory);
+      usage.requests.storage += parse(app.resources?.requests?.storage);
       usage.limits.cpu += parse(app.resources?.limits?.cpu);
       usage.limits.memory += parse(app.resources?.limits?.memory);
+      usage.limits.storage += parse(app.resources?.limits?.storage);
     }
     return res.json({ allowed, usage });
   } catch (err) {

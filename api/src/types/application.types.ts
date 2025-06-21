@@ -11,8 +11,8 @@ export default interface IApplication {
   env?: Record<string, string>;
   owner: mongoose.Types.ObjectId;
   resources?: {
-    requests?: { cpu?: string; memory?: string };
-    limits?: { cpu?: string; memory?: string };
+    requests?: { cpu?: string; memory?: string; storage?: string };
+    limits?: { cpu?: string; memory?: string; storage?: string };
   };
   ports?: Array<{
     containerPort: number;
