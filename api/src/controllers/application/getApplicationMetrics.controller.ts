@@ -98,7 +98,11 @@ const getApplicationMetrics = asyncHandler(
           });
           return { pod: podName, cpu, memory, storage };
         });
-        res.json({ metrics });
+        // Return metrics and resource requests/limits
+        res.json({
+          metrics,
+          resources: app.resources || {},
+        });
       } catch (e) {
         log({ type: "error", message: `Failed to parse metrics: ${e}` });
         return res
