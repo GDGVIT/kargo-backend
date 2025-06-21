@@ -1,7 +1,7 @@
 import User from "../../models/user.model";
 import Plan from "../../models/plan.model";
 import { Request, Response, NextFunction } from "express";
-import { log, formatNotification } from "../../utils/logging/logger";
+import log from "../../utils/logging/logger";
 
 const updateUserPlan = async (
   req: Request,

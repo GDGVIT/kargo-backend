@@ -1,4 +1,4 @@
-import { runDockerScript } from "./docker-file";
+import runDockerScript from "./docker-file";
 (async () => {
   const result = await runDockerScript(
     "https://github.com/swayam5342/ieeeras_task_1_backend"

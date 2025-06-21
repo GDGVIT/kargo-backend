@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import User from "../../models/user.model";
-import { log, formatNotification } from "../../utils/logging/logger";
-import type { IUser } from "../../types/user.types";
+import log, { formatNotification } from "../../utils/logging/logger";
+import type IUser from "../../types/user.types";
 import type { Document } from "mongoose";
 import isValidUsername from "../../utils/auth/isValidUsername";
 import sanitizeUser from "../../utils/auth/sanitizeUser";

@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
-import { IPlan } from "../types/plan.types";
+import IPlan from "../types/plan.types";
 
 const planSchema = new Schema<IPlan & Document>(
   {

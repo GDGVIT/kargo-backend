@@ -1,4 +1,4 @@
-import { sendMail } from "../email/mailer";
+import sendMail from "../email/mailer";
 
 export async function sendVerificationEmail({
   to,

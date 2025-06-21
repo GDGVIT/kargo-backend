@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import axios from "axios";
-import { log, formatNotification } from "../../utils/logging/logger";
+import log, { formatNotification } from "../../utils/logging/logger";
 import getUserFromSession from "../../utils/github/getUserFromSession";
 import createGitHubJwt from "../../utils/github/createGithubJWT";
 

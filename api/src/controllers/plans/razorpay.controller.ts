@@ -3,7 +3,6 @@ import Razorpay from "razorpay";
 import env from "../../config/env";
 import Plan from "../../models/plan.model";
 import getUserFromSession from "../../utils/auth/getUserFromSession";
-import User from "../../models/user.model";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID!,

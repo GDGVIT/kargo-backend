@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import path from "path";
 import fs from "fs/promises";
 
-export async function runDockerScript(
+export default async function runDockerScript(
   gitHubUrl: string
 ): Promise<{ dockerfile?: string; dockerCompose?: string; error?: string }> {
   const scriptPath = path.resolve(__dirname, "../../../AI/docker.py");

@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
-import { IApplication } from "../types/application.types";
+import IApplication from "../types/application.types";
 
 const ResourceSchema = new Schema(
   {

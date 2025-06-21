@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-export interface IApplication {
+export default interface IApplication {
   _id?: mongoose.Types.ObjectId | string;
   name: string;
   imageUrl: string;

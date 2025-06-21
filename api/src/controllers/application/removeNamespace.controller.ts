@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { exec } from "child_process";
 import Application from "../../models/application.model";
-import { asyncHandler } from "../../utils/handlers/asyncHandler";
-import { log, formatNotification } from "../../utils/logging/logger";
+import asyncHandler from "../../utils/handlers/asyncHandler";
+import log, { formatNotification } from "../../utils/logging/logger";
 
 const removeNamespace = asyncHandler(async (req: Request, res: Response) => {
   const app = await Application.findById(req.params.id);

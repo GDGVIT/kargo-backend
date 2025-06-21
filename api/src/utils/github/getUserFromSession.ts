@@ -1,10 +1,7 @@
-import { Request, Response } from "express";
-import axios from "axios";
-import jwt from "jsonwebtoken";
+import { Request } from "express";
 import User from "../../models/user.model";
-import { log, formatNotification } from "../logging/logger";
 import type { Document } from "mongoose";
-import { IUser } from "../../types/user.types";
+import IUser from "../../types/user.types";
 
 async function getUserFromSession(
   req: Request

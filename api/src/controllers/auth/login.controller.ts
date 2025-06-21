@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import passport from "passport";
-import { log, formatNotification } from "../../utils/logging/logger";
+import log, { formatNotification } from "../../utils/logging/logger";
 import sanitizeUser from "../../utils/auth/sanitizeUser";
 
 const login = async (req: Request, res: Response, next: NextFunction) => {

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import Application from "../../models/application.model";
-import { asyncHandler } from "../../utils/handlers/asyncHandler";
-import { log, formatNotification } from "../../utils/logging/logger";
-import type { IApplication } from "../../types/application.types";
+import asyncHandler from "../../utils/handlers/asyncHandler";
+import log, { formatNotification } from "../../utils/logging/logger";
+import type IApplication from "../../types/application.types";
 import type { Document } from "mongoose";
 
 const getApplication = asyncHandler(async (req: Request, res: Response) => {

@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
-import { IUser, IOAuth, IRegistryCredential } from "../types/user.types";
+import IUser, { IOAuth, IRegistryCredential } from "../types/user.types";
 
 const oauthSchema = new Schema<IOAuth>(
   {

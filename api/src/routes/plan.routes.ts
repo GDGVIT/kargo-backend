@@ -16,12 +16,12 @@ import {
 const router = Router();
 
 // Public: Get a single plan by ID
-router.get(":/id", asyncHandler(getPlanByID));
+router.get("/:id", asyncHandler(getPlanByID));
 // Public: Get all plans
 router.get("/", asyncHandler(getPlans));
 
 // Razorpay payment endpoints (public)
-router.post(":/id/create-order", asyncHandler(createOrder));
+router.post("/:id/create-order", asyncHandler(createOrder));
 router.post("/verify-payment", express.json(), (req, res) => {
   verifyPayment(req, res);
 });
@@ -32,8 +32,8 @@ router.use(ensureAdmin);
 // Admin: Create a new plan
 router.post("/", asyncHandler(createPlan));
 // Admin: Update a plan by ID
-router.put(":/id", asyncHandler(updatePlan));
+router.put("/:id", asyncHandler(updatePlan));
 // Admin: Delete a plan by ID
-router.delete(":/id", asyncHandler(deletePlan));
+router.delete("/:id", asyncHandler(deletePlan));
 
 export default router;

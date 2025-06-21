@@ -12,7 +12,7 @@ export interface IRegistryCredential {
   token: string;
 }
 
-export interface IUser {
+export default interface IUser {
   _id?: mongoose.Types.ObjectId | string;
   email: string;
   password?: string;

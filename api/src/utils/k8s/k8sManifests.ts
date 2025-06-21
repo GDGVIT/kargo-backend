@@ -1,5 +1,5 @@
 import { dump } from "js-yaml";
-import type { IApplication } from "../../types/application.types";
+import type IApplication from "../../types/application.types";
 
 function stripDates(obj: any): any {
   const seen = new WeakSet();
@@ -359,7 +359,7 @@ function generateImagePullSecretYaml(
   );
 }
 
-export function generateK8sManifests(app: IApplication): {
+export default function generateK8sManifests(app: IApplication): {
   deploymentYaml: string;
   serviceYaml: string;
   ingressYaml: string;

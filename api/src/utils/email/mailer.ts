@@ -13,7 +13,7 @@ export const transporter = nodemailer.createTransport({
 
 const FROM_ADDRESS = env.SMTP_FROM;
 
-export async function sendMail({
+export default async function sendMail({
   to,
   subject,
   html,

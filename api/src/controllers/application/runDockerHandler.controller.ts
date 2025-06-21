@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { runDockerScript } from "../../utils/k8s/docker-file";
-import { log, formatNotification } from "../../utils/logging/logger";
+import runDockerScript from "../../utils/k8s/docker-file";
+import log, { formatNotification } from "../../utils/logging/logger";
 
 const runDockerHandler = async (req: Request, res: Response) => {
   const { url } = req.body;

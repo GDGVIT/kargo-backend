@@ -9,7 +9,7 @@ import githubRoutes from "./routes/github.routes";
 import applicationRoutes from "./routes/application.routes";
 import userRoutes from "./routes/user.routes";
 import planRoutes from "./routes/plan.routes";
-import { log } from "./utils/logging/logger";
+import log from "./utils/logging/logger";
 import env from "./config/env";
 import "./auth/passport";
 import "./auth/local.strategy";

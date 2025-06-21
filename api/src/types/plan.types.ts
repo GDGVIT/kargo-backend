@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-export interface IPlan {
+export default interface IPlan {
   _id?: mongoose.Types.ObjectId | string;
   name: string;
   description?: string;
