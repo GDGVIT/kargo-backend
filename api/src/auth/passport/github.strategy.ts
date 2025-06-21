@@ -1,9 +1,9 @@
 import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
-import User from "../models/user.model";
-import Plan from "../models/plan.model";
-import log from "../utils/logging/logger";
-import env from "../config/env";
+import User from "../../models/user.model";
+import Plan from "../../models/plan.model";
+import log from "../../utils/logging/logger";
+import env from "../../config/env";
 
 export function setupGitHubStrategy() {
   passport.use(
