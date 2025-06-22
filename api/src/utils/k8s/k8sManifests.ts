@@ -186,11 +186,11 @@ function generateResourcesBlock(resources: any): string {
   if (!resources) return "";
   return `          resources:
             requests:
-              cpu: "${resources.requests?.cpu || "0m"}"
-              memory: "${resources.requests?.memory || "0Mi"}"
+              cpu: "${toK8sResource(resources.requests?.cpu, "cpu")}"
+              memory: "${toK8sResource(resources.requests?.memory, "memory")}"
             limits:
-              cpu: "${resources.limits?.cpu || "0m"}"
-              memory: "${resources.limits?.memory || "0Mi"}"`;
+              cpu: "${toK8sResource(resources.limits?.cpu, "cpu")}"
+              memory: "${toK8sResource(resources.limits?.memory, "memory")}"`;
 }
 
 function generateVolumeMountsBlock(volumes: any[]): string {
@@ -357,6 +357,38 @@ function generateImagePullSecretYaml(
       "base64"
     )}\n`
   );
+}
+
+// Utility to ensure resource values are in correct string format for k8s
+function toK8sResource(
+  val: string | number | undefined,
+  type: "cpu" | "memory"
+): string {
+  if (val === undefined || val === null || val === "")
+    return type === "cpu" ? "0m" : "0Mi";
+  if (typeof val === "number") {
+    if (type === "cpu") {
+      // If value is less than 1, treat as millicores (e.g., 20 -> 20m)
+      if (val < 1) return `${Math.round(val * 1000)}m`;
+      return `${val}m`;
+    }
+    if (type === "memory") return `${val}Mi`;
+  }
+  if (typeof val === "string") {
+    // If already ends with m, Mi, Gi, etc., return as is
+    if (type === "cpu" && /m$/.test(val)) return val;
+    if (type === "memory" && /(Mi|Gi)$/.test(val)) return val;
+    // If it's a plain number string, add suffix
+    if (/^\d+$/.test(val)) {
+      return type === "cpu" ? `${val}m` : `${val}Mi`;
+    }
+    // If it's a float string for cpu, convert to millicores
+    if (type === "cpu" && /^\d*\.\d+$/.test(val)) {
+      return `${Math.round(parseFloat(val) * 1000)}m`;
+    }
+    return val;
+  }
+  return type === "cpu" ? "0m" : "0Mi";
 }
 
 export default function generateK8sManifests(app: IApplication): {
