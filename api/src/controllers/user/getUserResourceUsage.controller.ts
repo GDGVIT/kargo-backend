@@ -37,8 +37,10 @@ const getUserResourceUsage = async (
       planResources = (user.plan as any).resources || {};
     }
     const extra = user.extraResources || {};
-    function parse(val: string | undefined) {
-      if (!val) return 0;
+    function parse(val: string | number | undefined | null): number {
+      if (val === undefined || val === null || val === "") return 0;
+      if (typeof val === "number") return val;
+      if (typeof val !== "string") return 0;
       if (val.endsWith("m")) return parseInt(val) / 1000;
       if (val.endsWith("Mi")) return parseInt(val);
       if (val.endsWith("Gi")) return parseInt(val) * 1024;
