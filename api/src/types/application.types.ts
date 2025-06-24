@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
 
 export interface Resource {
-  cpu?: number;
-  memory?: number;
-  storage?: number;
+  cpuMilli?: number;
+  memoryMB?: number;
+  storageGB?: number;
 }
-
 export default interface IApplication {
   _id?: mongoose.Types.ObjectId | string;
   name: string;

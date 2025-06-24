@@ -3,11 +3,11 @@ import IApplication from "../types/application.types";
 
 export const ResourceSchema = new Schema(
   {
-    cpu: { type: Number, min: 0 }, // 0.01 vCPU
-    memory: { type: Number, min: 0 }, // MB
-    storage: { type: Number, min: 0 }, // GB
+    cpuMilli: { type: Number, min: 0 }, // e.g., 250 = 0.25 vCPU
+    memoryMB: { type: Number, min: 0 }, // e.g., 512
+    storageGB: { type: Number, min: 0 }, // e.g., 10
   },
-  { _id: false }
+  {_id:false}
 );
 
 const PortSchema = new Schema(
