@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { Resource } from "./application.types";
 
 export interface IOAuth {
   googleId?: string;
@@ -25,28 +26,12 @@ export default interface IUser {
   verificationToken?: string;
   role?: "user" | "admin" | "superadmin";
   resources?: {
-    requests?: {
-      cpu?: string;
-      memory?: string;
-      storage?: string;
-    };
-    limits?: {
-      cpu?: string;
-      memory?: string;
-      storage?: string;
-    };
+    requests?: Resource;
+    limits?: Resource;
   };
   extraResources?: {
-    requests?: {
-      cpu?: string;
-      memory?: string;
-      storage?: string;
-    };
-    limits?: {
-      cpu?: string;
-      memory?: string;
-      storage?: string;
-    };
+    requests?: Resource;
+    limits?: Resource;
   };
   plan?: mongoose.Types.ObjectId | string;
   credentials?: IRegistryCredential[];
