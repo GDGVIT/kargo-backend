@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
-import { IUser, IOAuth, IRegistryCredential } from "../types/user.types";
+import IUser, { IOAuth, IRegistryCredential } from "../types/user.types";
+import { ResourceSchema } from "./application.model";
 
 const oauthSchema = new Schema<IOAuth>(
   {
@@ -40,24 +41,12 @@ const userSchema = new Schema<IUser & Document>(
       default: "user",
     },
     resources: {
-      requests: {
-        cpu: { type: String },
-        memory: { type: String },
-      },
-      limits: {
-        cpu: { type: String },
-        memory: { type: String },
-      },
+      requests: ResourceSchema,
+      limits: ResourceSchema,
     },
     extraResources: {
-      requests: {
-        cpu: { type: String },
-        memory: { type: String },
-      },
-      limits: {
-        cpu: { type: String },
-        memory: { type: String },
-      },
+      requests: ResourceSchema,
+      limits: ResourceSchema,
     },
     plan: { type: Schema.Types.ObjectId, ref: "Plan", default: null },
     credentials: { type: [registryCredentialSchema], default: [] },

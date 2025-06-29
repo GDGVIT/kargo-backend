@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { spawn } from "child_process";
 import Application from "../../models/application.model";
-import { asyncHandler } from "../../utils/handlers/asyncHandler";
-import { log, formatNotification } from "../../utils/logging/logger";
+import asyncHandler from "../../utils/handlers/asyncHandler";
+import log, { formatNotification } from "../../utils/logging/logger";
 
 const LOG_TAIL_COUNT = 200;
 const LOG_THROTTLE_MS = 100;

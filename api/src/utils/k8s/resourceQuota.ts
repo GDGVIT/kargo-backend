@@ -1,5 +1,7 @@
-export function parseResource(val: string | undefined) {
-  if (!val) return 0;
+export function parseResource(val: string | number | undefined) {
+  if (val === undefined || val === null || val === "") return 0;
+  if (typeof val === "number") return val;
+  if (typeof val !== "string") return 0;
   if (val.endsWith("m")) return parseInt(val) / 1000;
   if (val.endsWith("Mi")) return parseInt(val);
   if (val.endsWith("Gi")) return parseInt(val) * 1024;
@@ -8,12 +10,12 @@ export function parseResource(val: string | undefined) {
 
 interface ResourceQuota {
   requests: {
-    cpu?: string;
-    memory?: string;
+    cpuMilli?: string;
+    memoryMB?: string;
   };
   limits: {
-    cpu?: string;
-    memory?: string;
+    cpuMilli?: string;
+    memoryMB?: string;
   };
 }
 
@@ -47,23 +49,23 @@ export async function checkResourceQuota({
     const extra = userModel.extraResources || {};
     const allowed = {
       requests: {
-        cpu: (
-          parseResource(planResources.requests?.cpu) +
-          parseResource(extra.requests?.cpu)
+        cpuMilli: (
+          parseResource(planResources.requests?.cpuMilli) +
+          parseResource(extra.requests?.cpuMilli)
         ).toString(),
-        memory: (
-          parseResource(planResources.requests?.memory) +
-          parseResource(extra.requests?.memory)
+        memoryMB: (
+          parseResource(planResources.requests?.memoryMB) +
+          parseResource(extra.requests?.memoryMB)
         ).toString(),
       },
       limits: {
-        cpu: (
-          parseResource(planResources.limits?.cpu) +
-          parseResource(extra.limits?.cpu)
+        cpuMilli: (
+          parseResource(planResources.limits?.cpuMilli) +
+          parseResource(extra.limits?.cpuMilli)
         ).toString(),
-        memory: (
-          parseResource(planResources.limits?.memory) +
-          parseResource(extra.limits?.memory)
+        memoryMB: (
+          parseResource(planResources.limits?.memoryMB) +
+          parseResource(extra.limits?.memoryMB)
         ).toString(),
       },
     };
@@ -79,33 +81,33 @@ export async function checkResourceQuota({
       limits: { cpu: 0, memory: 0 },
     };
     for (const app of apps) {
-      usage.requests.cpu += parseResource(app.resources?.requests?.cpu);
-      usage.requests.memory += parseResource(app.resources?.requests?.memory);
-      usage.limits.cpu += parseResource(app.resources?.limits?.cpu);
-      usage.limits.memory += parseResource(app.resources?.limits?.memory);
+      usage.requests.cpu += parseResource(app.resources?.requests?.cpuMilli);
+      usage.requests.memory += parseResource(app.resources?.requests?.memoryMB);
+      usage.limits.cpu += parseResource(app.resources?.limits?.cpuMilli);
+      usage.limits.memory += parseResource(app.resources?.limits?.memoryMB);
     }
 
-    usage.requests.cpu += parseResource(resources.requests?.cpu);
-    usage.requests.memory += parseResource(resources.requests?.memory);
-    usage.limits.cpu += parseResource(resources.limits?.cpu);
-    usage.limits.memory += parseResource(resources.limits?.memory);
+    usage.requests.cpu += parseResource(resources.requests?.cpuMilli);
+    usage.requests.memory += parseResource(resources.requests?.memoryMB);
+    usage.limits.cpu += parseResource(resources.limits?.cpuMilli);
+    usage.limits.memory += parseResource(resources.limits?.memoryMB);
 
     const usageString: ResourceQuota = {
       requests: {
-        cpu: usage.requests.cpu.toString(),
-        memory: usage.requests.memory.toString(),
+        cpuMilli: usage.requests.cpu.toString(),
+        memoryMB: usage.requests.memory.toString(),
       },
       limits: {
-        cpu: usage.limits.cpu.toString(),
-        memory: usage.limits.memory.toString(),
+        cpuMilli: usage.limits.cpu.toString(),
+        memoryMB: usage.limits.memory.toString(),
       },
     };
 
     if (
-      usage.requests.cpu > parseFloat(allowed.requests.cpu) ||
-      usage.requests.memory > parseFloat(allowed.requests.memory) ||
-      usage.limits.cpu > parseFloat(allowed.limits.cpu) ||
-      usage.limits.memory > parseFloat(allowed.limits.memory)
+      usage.requests.cpu > parseFloat(allowed.requests.cpuMilli) ||
+      usage.requests.memory > parseFloat(allowed.requests.memoryMB) ||
+      usage.limits.cpu > parseFloat(allowed.limits.cpuMilli) ||
+      usage.limits.memory > parseFloat(allowed.limits.memoryMB)
     ) {
       return { allowed, usage: usageString, exceeded: true };
     }

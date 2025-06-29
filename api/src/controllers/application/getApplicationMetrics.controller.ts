@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { spawn } from "child_process";
 import Application from "../../models/application.model";
-import { asyncHandler } from "../../utils/handlers/asyncHandler";
-import { log, formatNotification } from "../../utils/logging/logger";
+import asyncHandler from "../../utils/handlers/asyncHandler";
+import log, { formatNotification } from "../../utils/logging/logger";
 
 const getApplicationMetrics = asyncHandler(
   async (req: Request, res: Response) => {
@@ -54,54 +54,65 @@ const getApplicationMetrics = asyncHandler(
           const podName = pod.metadata.name;
           const containers =
             pod.containers || pod.usage || pod.containers || [];
-          let cpu = 0,
-            memory = 0,
-            storage = 0;
+          let cpuMilli = 0,
+            memoryMB = 0,
+            storageGB = 0;
           containers.forEach((c: any) => {
             // CPU in n (nano cores), convert to m (millicores)
             if (c.usage?.cpu) {
               const cpuStr = c.usage.cpu;
               if (cpuStr.endsWith("n")) {
-                cpu += Math.round(parseInt(cpuStr) / 1000000);
+                cpuMilli += Math.round(parseInt(cpuStr) / 1000000);
               } else if (cpuStr.endsWith("m")) {
-                cpu += parseInt(cpuStr);
+                cpuMilli += parseInt(cpuStr);
               } else if (cpuStr.endsWith("")) {
-                cpu += parseInt(cpuStr) * 1000;
+                cpuMilli += parseInt(cpuStr) * 1000;
               }
             }
             // Memory in bytes, Ki, Mi, Gi
             if (c.usage?.memory) {
               const memStr = c.usage.memory;
               if (memStr.endsWith("Ki")) {
-                memory += Math.round(parseInt(memStr) / 1024);
+                memoryMB += Math.round(parseInt(memStr) / 1024);
               } else if (memStr.endsWith("Mi")) {
-                memory += parseInt(memStr);
+                memoryMB += parseInt(memStr);
               } else if (memStr.endsWith("Gi")) {
-                memory += parseInt(memStr) * 1024;
+                memoryMB += parseInt(memStr) * 1024;
               } else if (/^\d+$/.test(memStr)) {
-                memory += Math.round(parseInt(memStr) / (1024 * 1024));
+                memoryMB += Math.round(parseInt(memStr) / (1024 * 1024));
               }
             }
             // Ephemeral storage (if available)
             if (c.usage?.["ephemeral-storage"]) {
               const storageStr = c.usage["ephemeral-storage"];
               if (storageStr.endsWith("Ki")) {
-                storage += Math.round(parseInt(storageStr) / 1024);
+                storageGB += Math.round(parseInt(storageStr) / 1024);
               } else if (storageStr.endsWith("Mi")) {
-                storage += parseInt(storageStr);
+                storageGB += parseInt(storageStr);
               } else if (storageStr.endsWith("Gi")) {
-                storage += parseInt(storageStr) * 1024;
+                storageGB += parseInt(storageStr) * 1024;
               } else if (/^\d+$/.test(storageStr)) {
-                storage += Math.round(parseInt(storageStr) / (1024 * 1024));
+                storageGB += Math.round(parseInt(storageStr) / (1024 * 1024));
               }
             }
           });
-          return { pod: podName, cpu, memory, storage };
+          return { pod: podName, cpuMilli, memoryMB, storageGB };
         });
         // Return metrics and resource requests/limits
         res.json({
           metrics,
-          resources: app.resources || {},
+          resources: {
+            requests: {
+              cpuMilli: app.resources?.requests?.cpuMilli || null,
+              memoryMB: app.resources?.requests?.memoryMB || null,
+              storageGB: app.resources?.requests?.storageGB || null,
+            },
+            limits: {
+              cpuMilli: app.resources?.limits?.cpuMilli || null,
+              memoryMB: app.resources?.limits?.memoryMB || null,
+              storageGB: app.resources?.limits?.storageGB || null,
+            },
+          },
         });
       } catch (e) {
         log({ type: "error", message: `Failed to parse metrics: ${e}` });

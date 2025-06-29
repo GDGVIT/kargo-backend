@@ -1,6 +1,6 @@
 import { Request } from "express";
-import User from "../models/user.model";
-import { IUser } from "../types/user.types";
+import User from "../../models/user.model";
+import IUser from "../../types/user.types";
 import { Document } from "mongoose";
 
 async function getUserFromSession(

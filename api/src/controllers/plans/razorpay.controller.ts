@@ -2,8 +2,7 @@ import { Request, Response } from "express";
 import Razorpay from "razorpay";
 import env from "../../config/env";
 import Plan from "../../models/plan.model";
-import getUserFromSession from "../../utils/getUserFromSession";
-import User from "../../models/user.model";
+import getUserFromSession from "../../utils/auth/getUserFromSession";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID!,

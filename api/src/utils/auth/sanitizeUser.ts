@@ -1,4 +1,4 @@
-import { IUser } from "../../types/user.types";
+import IUser from "../../types/user.types";
 
 function sanitizeUser(user: any): Partial<IUser> {
   const safeUser = { ...(user.toObject?.() || user) };

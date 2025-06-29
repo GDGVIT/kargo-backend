@@ -1,7 +1,7 @@
 import env from "./config/env";
 import mongoose from "mongoose";
 import api from "./api";
-import { log } from "./utils/logging/logger";
+import log from "./utils/logging/logger";
 
 const PORT = 5000;
 

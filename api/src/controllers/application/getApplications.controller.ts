@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import Application from "../../models/application.model";
-import { asyncHandler } from "../../utils/handlers/asyncHandler";
-import { log, formatNotification } from "../../utils/logging/logger";
+import asyncHandler from "../../utils/handlers/asyncHandler";
+import log, { formatNotification } from "../../utils/logging/logger";
 
 const getApplications = asyncHandler(async (req: Request, res: Response) => {
   try {

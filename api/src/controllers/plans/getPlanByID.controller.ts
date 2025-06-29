@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import Plan from "../../models/plan.model";
-import type { IPlan } from "../../types/plan.types";
+import type IPlan from "../../types/plan.types";
 import type { Document } from "mongoose";
 
 // Public: get a single plan by ID

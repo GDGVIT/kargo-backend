@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { IUser } from "../types/user.types";
-import { log, formatNotification } from "../utils/logging/logger";
+import IUser from "../types/user.types";
+import log, { formatNotification } from "../utils/logging/logger";
 
 // Middleware to check if user is admin or superadmin
 export function ensureAdmin(
