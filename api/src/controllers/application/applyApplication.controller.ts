@@ -13,7 +13,10 @@ import env from "../../config/env";
 
 const exec = promisify(execCb);
 
-function writeManifestFiles(appDir: string, manifests: Record<string, string | undefined>) {
+function writeManifestFiles(
+  appDir: string,
+  manifests: Record<string, string | undefined>
+) {
   for (const [filename, content] of Object.entries(manifests)) {
     if (content) {
       fs.writeFileSync(path.join(appDir, filename), content);
@@ -21,7 +24,12 @@ function writeManifestFiles(appDir: string, manifests: Record<string, string | u
   }
 }
 
-async function applyManifestSequence(appDir: string, appName: string, manifestFiles: string[], res: Response) {
+async function applyManifestSequence(
+  appDir: string,
+  appName: string,
+  manifestFiles: string[],
+  res: Response
+) {
   try {
     await exec(`kubectl apply -f namespace.yaml`, { cwd: appDir });
     await exec(`kubectl apply -f secret.yaml`, { cwd: appDir });
