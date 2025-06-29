@@ -7,7 +7,7 @@ export const ResourceSchema = new Schema(
     memoryMB: { type: Number, min: 0 }, // e.g., 512
     storageGB: { type: Number, min: 0 }, // e.g., 10
   },
-  {_id:false}
+  { _id: false }
 );
 
 const PortSchema = new Schema(

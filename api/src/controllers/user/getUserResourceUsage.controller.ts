@@ -48,19 +48,24 @@ const getUserResourceUsage = async (
     }
     const allowed = {
       requests: {
-        cpuMilli: parse(planResources.requests?.cpuMilli) + parse(extra.requests?.cpuMilli),
+        cpuMilli:
+          parse(planResources.requests?.cpuMilli) +
+          parse(extra.requests?.cpuMilli),
         memoryMB:
-          parse(planResources.requests?.memoryMB) + parse(extra.requests?.memoryMB),
+          parse(planResources.requests?.memoryMB) +
+          parse(extra.requests?.memoryMB),
         storageGB:
           parse(planResources.requests?.storageGB) +
           parse(extra.requests?.storageGB),
       },
       limits: {
-        cpuMilli: parse(planResources.limits?.cpuMilli) + parse(extra.limits?.cpuMilli),
+        cpuMilli:
+          parse(planResources.limits?.cpuMilli) + parse(extra.limits?.cpuMilli),
         memoryMB:
           parse(planResources.limits?.memoryMB) + parse(extra.limits?.memoryMB),
         storageGB:
-          parse(planResources.limits?.storageGB) + parse(extra.limits?.storageGB),
+          parse(planResources.limits?.storageGB) +
+          parse(extra.limits?.storageGB),
       },
     };
     // Sum all app resource usage for this user
