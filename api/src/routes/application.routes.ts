@@ -8,7 +8,6 @@ import getApplications from "../controllers/application/getApplications.controll
 import getApplication from "../controllers/application/getApplication.controller";
 import updateApplication from "../controllers/application/updateApplication.controller";
 import deleteApplication from "../controllers/application/deleteApplication.controller";
-import deleteApplicationAndResources from "../controllers/application/deleteApplicationAndResources.controller";
 import applyApplication from "../controllers/application/applyApplication.controller";
 import runDockerHandler from "../controllers/application/runDockerHandler.controller";
 import removeDeployment from "../controllers/application/removeDeployment.controller";
@@ -31,8 +30,6 @@ router.get("/:id", getApplication);
 router.put("/:id", updateApplication);
 // Delete an application by ID
 router.delete("/:id", deleteApplication);
-// Delete an application and all its resources
-router.delete("/:id/delete-all", deleteApplicationAndResources);
 // Apply (deploy) an application
 router.post("/:id/apply", applyApplication);
 // Remove a deployment for an application
