@@ -25,6 +25,7 @@ const REQUIRED_ENV_VARS = [
   "GROQ",
   "RAZORPAY_KEY_ID",
   "RAZORPAY_KEY_SECRET",
+  "PROMETHEUS_URL",
 ];
 
 const env = {
@@ -78,6 +79,9 @@ const env = {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
+
+  // Prometheus URL for metrics
+  PROMETHEUS_URL: process.env.PROMETHEUS_URL || "http://localhost:9090",
 };
 
 const missingVars = REQUIRED_ENV_VARS.filter(
