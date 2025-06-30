@@ -1,8 +1,11 @@
 import { Request, Response } from "express";
-import { spawn } from "child_process";
+import axios from "axios";
 import Application from "../../models/application.model";
 import asyncHandler from "../../utils/handlers/asyncHandler";
 import log, { formatNotification } from "../../utils/logging/logger";
+import env from "../../config/env";
+
+const prometheusBaseUrl = (env as any).PROMETHEUS_URL;
 
 const getApplicationMetrics = asyncHandler(
   async (req: Request, res: Response) => {
@@ -14,112 +17,66 @@ const getApplicationMetrics = asyncHandler(
         .json(formatNotification("Application not found", "error"));
     }
     const namespace = app.namespace || "default";
-    const deploymentLabel = app.deploymentName
-      ? `deployment=${app.deploymentName}`
-      : `app=${app.name}`;
-
-    // Use kubectl get --raw to fetch metrics from metrics-server
-    const kubectl = spawn("kubectl", [
-      "get",
-      "--raw",
-      `/apis/metrics.k8s.io/v1beta1/namespaces/${namespace}/pods`,
-    ]);
-    let output = "";
-    let error = "";
-    kubectl.stdout.on("data", (data: Buffer) => {
-      output += data.toString();
-    });
-    kubectl.stderr.on("data", (data: Buffer) => {
-      error += data.toString();
-    });
-    kubectl.on("close", async (code: number) => {
-      if (code !== 0 || error) {
-        log({ type: "error", message: `kubectl metrics API failed: ${error}` });
-        return res
-          .status(500)
-          .json(formatNotification("Failed to fetch metrics", "error"));
-      }
+    const deploymentName = app.deploymentName || app.name;
+    // Prometheus pod name pattern: deploymentName-xxxx
+    const podRegex = `${deploymentName}-.*`;
+    const queries = {
+      cpu: `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}", pod=~"${podRegex}"}[5m]))`,
+      memory: `sum(container_memory_usage_bytes{namespace="${namespace}", pod=~"${podRegex}"})`,
+      storage: `sum(container_fs_usage_bytes{namespace="${namespace}", pod=~"${podRegex}"})`,
+    };
+    const end = Math.floor(Date.now() / 1000);
+    const start = end - 3600; // last 1 hour
+    const step = 60; // 1-minute intervals
+    const results: Record<string, any> = {};
+    for (const [key, query] of Object.entries(queries)) {
+      const instantUrl = `${prometheusBaseUrl}/api/v1/query?query=${encodeURIComponent(
+        query
+      )}`;
+      const rangeUrl = `${prometheusBaseUrl}/api/v1/query_range?query=${encodeURIComponent(
+        query
+      )}&start=${start}&end=${end}&step=${step}`;
       try {
-        const data = JSON.parse(output);
-        // Filter pods by label
-        const pods = (data.items || []).filter((pod: any) => {
-          const labels = pod.metadata?.labels || {};
-          if (app.deploymentName) {
-            return labels["deployment"] === app.deploymentName;
-          } else {
-            return labels["app"] === app.name;
-          }
-        });
-        const metrics = pods.map((pod: any) => {
-          const podName = pod.metadata.name;
-          const containers =
-            pod.containers || pod.usage || pod.containers || [];
-          let cpuMilli = 0,
-            memoryMB = 0,
-            storageGB = 0;
-          containers.forEach((c: any) => {
-            // CPU in n (nano cores), convert to m (millicores)
-            if (c.usage?.cpu) {
-              const cpuStr = c.usage.cpu;
-              if (cpuStr.endsWith("n")) {
-                cpuMilli += Math.round(parseInt(cpuStr) / 1000000);
-              } else if (cpuStr.endsWith("m")) {
-                cpuMilli += parseInt(cpuStr);
-              } else if (cpuStr.endsWith("")) {
-                cpuMilli += parseInt(cpuStr) * 1000;
-              }
-            }
-            // Memory in bytes, Ki, Mi, Gi
-            if (c.usage?.memory) {
-              const memStr = c.usage.memory;
-              if (memStr.endsWith("Ki")) {
-                memoryMB += Math.round(parseInt(memStr) / 1024);
-              } else if (memStr.endsWith("Mi")) {
-                memoryMB += parseInt(memStr);
-              } else if (memStr.endsWith("Gi")) {
-                memoryMB += parseInt(memStr) * 1024;
-              } else if (/^\d+$/.test(memStr)) {
-                memoryMB += Math.round(parseInt(memStr) / (1024 * 1024));
-              }
-            }
-            // Ephemeral storage (if available)
-            if (c.usage?.["ephemeral-storage"]) {
-              const storageStr = c.usage["ephemeral-storage"];
-              if (storageStr.endsWith("Ki")) {
-                storageGB += Math.round(parseInt(storageStr) / 1024);
-              } else if (storageStr.endsWith("Mi")) {
-                storageGB += parseInt(storageStr);
-              } else if (storageStr.endsWith("Gi")) {
-                storageGB += parseInt(storageStr) * 1024;
-              } else if (/^\d+$/.test(storageStr)) {
-                storageGB += Math.round(parseInt(storageStr) / (1024 * 1024));
-              }
-            }
-          });
-          return { pod: podName, cpuMilli, memoryMB, storageGB };
-        });
-        // Return metrics and resource requests/limits
-        res.json({
-          metrics,
-          resources: {
-            requests: {
-              cpuMilli: app.resources?.requests?.cpuMilli || null,
-              memoryMB: app.resources?.requests?.memoryMB || null,
-              storageGB: app.resources?.requests?.storageGB || null,
-            },
-            limits: {
-              cpuMilli: app.resources?.limits?.cpuMilli || null,
-              memoryMB: app.resources?.limits?.memoryMB || null,
-              storageGB: app.resources?.limits?.storageGB || null,
-            },
-          },
-        });
-      } catch (e) {
-        log({ type: "error", message: `Failed to parse metrics: ${e}` });
-        return res
-          .status(500)
-          .json(formatNotification("Failed to parse metrics", "error"));
+        const [instantRes, rangeRes] = await Promise.all([
+          axios.get(instantUrl),
+          axios.get(rangeUrl),
+        ]);
+        results[key] = {
+          current: instantRes.data.data.result?.[0]?.value?.[1]
+            ? Number(
+                Number(instantRes.data.data.result[0].value[1]).toFixed(3)
+              ).toLocaleString(undefined, { maximumFractionDigits: 3 })
+            : null,
+          history: rangeRes.data.data.result?.[0]?.values
+            ? rangeRes.data.data.result[0].values.map(
+                ([ts, val]: [number, string]) => [
+                  ts,
+                  Number(Number(val).toFixed(3)).toLocaleString(undefined, {
+                    maximumFractionDigits: 3,
+                  }),
+                ]
+              )
+            : [],
+        };
+      } catch {
+        results[key] = { current: null, history: [] };
       }
+    }
+    // Return metrics and resource requests/limits
+    res.json({
+      metrics: results,
+      resources: {
+        requests: {
+          cpuMilli: app.resources?.requests?.cpuMilli || null,
+          memoryMB: app.resources?.requests?.memoryMB || null,
+          storageGB: app.resources?.requests?.storageGB || null,
+        },
+        limits: {
+          cpuMilli: app.resources?.limits?.cpuMilli || null,
+          memoryMB: app.resources?.limits?.memoryMB || null,
+          storageGB: app.resources?.limits?.storageGB || null,
+        },
+      },
     });
   }
 );
