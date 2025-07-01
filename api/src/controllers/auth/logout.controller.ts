@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { log, formatNotification } from "../../utils/logging/logger";
+import log, { formatNotification } from "../../utils/logging/logger";
 import env from "../../config/env";
 
 const logout = (req: Request, res: Response) => {

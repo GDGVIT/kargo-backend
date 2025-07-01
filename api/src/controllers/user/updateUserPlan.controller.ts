@@ -1,16 +1,14 @@
-import { Router } from "express";
-import { ensureAuthenticated } from "./auth.routes";
-import { asyncHandler } from "../utils/handlers/asyncHandler";
-import User from "../models/user.model";
-import Plan from "../models/plan.model";
+import User from "../../models/user.model";
+import Plan from "../../models/plan.model";
+import { Request, Response, NextFunction } from "express";
+import log from "../../utils/logging/logger";
 
-const router = Router();
-
-// Admin or self (if superadmin): assign a plan to a user
-router.put(
-  "/:id/plan",
-  ensureAuthenticated,
-  asyncHandler(async (req, res, next) => {
+const updateUserPlan = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
     const { id } = req.params;
     const { planId } = req.body;
     const user = await User.findById(id);
@@ -31,7 +29,14 @@ router.put(
     user.plan = String(plan._id);
     await user.save();
     res.json({ message: "Plan assigned to user", user });
-  })
-);
+  } catch (err) {
+    log({
+      type: "error",
+      message: "Failed to update user plan",
+      meta: err,
+    });
+    next(err);
+  }
+};
 
-export default router;
+export default updateUserPlan;

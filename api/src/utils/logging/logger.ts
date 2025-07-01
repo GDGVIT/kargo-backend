@@ -18,7 +18,7 @@ const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 const logFilePath = path.join(logsDir, `server-${timestamp}.log`);
 logStream = fs.createWriteStream(logFilePath, { flags: "a" });
 
-export function log({ type, message, meta }: LogOptions) {
+export default function log({ type, message, meta }: LogOptions) {
   const colorMap: Record<LogType, string> = {
     success: "\x1b[32m", // green
     error: "\x1b[31m", // red

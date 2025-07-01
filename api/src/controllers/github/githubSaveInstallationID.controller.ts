@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { log, formatNotification } from "../../utils/logging/logger";
+import log, { formatNotification } from "../../utils/logging/logger";
 import getUserFromSession from "../../utils/github/getUserFromSession";
 
 const githubSaveInstallationID = async (req: Request, res: Response) => {

@@ -1,8 +1,8 @@
 import passport from "passport";
 import User from "../models/user.model";
-import { setupGitHubStrategy } from "./github.strategy";
-import { setupGoogleStrategy } from "./google.strategy";
-import { log } from "../utils/logging/logger";
+import { setupGitHubStrategy } from "./passport/github.strategy";
+import { setupGoogleStrategy } from "./passport/google.strategy";
+import log from "../utils/logging/logger";
 
 setupGitHubStrategy();
 setupGoogleStrategy();

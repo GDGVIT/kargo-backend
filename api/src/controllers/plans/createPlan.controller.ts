@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import Plan from "../../models/plan.model";
-import { log, formatNotification } from "../../utils/logging/logger";
+import log, { formatNotification } from "../../utils/logging/logger";
 
 // Create a new plan (admin only)
 const createPlan = async (req: Request, res: Response, next: NextFunction) => {

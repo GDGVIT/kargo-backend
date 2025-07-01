@@ -1,5 +1,5 @@
 import { dump } from "js-yaml";
-import type { IApplication } from "../../types/application.types";
+import type IApplication from "../../types/application.types";
 
 function stripDates(obj: any): any {
   const seen = new WeakSet();
@@ -62,6 +62,63 @@ function generateIngressYaml(sanitizedApp: any, namespace: string): string {
     `  namespace: ${namespace}`,
     `  labels:`,
     `    app: ${sanitizedApp.name}`,
+    `    deployment: ${sanitizedApp.deploymentName}`,
+    `  annotations:`,
+    `    kubernetes.io/ingress.class: traefik`,
+    `    cert-manager.io/cluster-issuer: letsencrypt-wildcard`,
+    `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
+    `    nginx.ingress.kubernetes.io/ssl-redirect: "true"`,
+    `spec:`,
+    `  rules:`,
+    rules,
+    `  tls:`,
+    `    - hosts:`,
+    ...hosts.map((h: string) => `        - ${h}`),
+    `      secretName: wildcard-tls`,
+  ].join("\n");
+}
+
+// Add deployment label to all relevant resources
+function generateIngressYamlWithDeployment(
+  sanitizedApp: any,
+  namespace: string
+): string {
+  const ingressPorts = (sanitizedApp.ports || []).filter(
+    (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
+  );
+  if (ingressPorts.length === 0) return "";
+  const rules = ingressPorts
+    .map((p: any) => {
+      let host = p.subdomain;
+      if (host.endsWith(".")) host = host.slice(0, -1);
+      return [
+        `    - host: ${host}`,
+        `      http:`,
+        `        paths:`,
+        `          - path: /`,
+        `            pathType: Prefix`,
+        `            backend:`,
+        `              service:`,
+        `                name: ${sanitizedApp.serviceName}`,
+        `                port:`,
+        `                  number: ${p.containerPort}`,
+      ].join("\n");
+    })
+    .join("\n");
+  // Collect all hosts for TLS
+  const hosts = ingressPorts.map((p: any) =>
+    p.subdomain.endsWith(".") ? p.subdomain.slice(0, -1) : p.subdomain
+  );
+  return [
+    `---`,
+    `apiVersion: networking.k8s.io/v1`,
+    `kind: Ingress`,
+    `metadata:`,
+    `  name: ${sanitizedApp.name}-ingress`,
+    `  namespace: ${namespace}`,
+    `  labels:`,
+    `    app: ${sanitizedApp.name}`,
+    `    deployment: ${sanitizedApp.deploymentName}`,
     `  annotations:`,
     `    kubernetes.io/ingress.class: traefik`,
     `    cert-manager.io/cluster-issuer: letsencrypt-wildcard`,
@@ -129,11 +186,11 @@ function generateResourcesBlock(resources: any): string {
   if (!resources) return "";
   return `          resources:
             requests:
-              cpu: "${resources.requests?.cpu || "100m"}"
-              memory: "${resources.requests?.memory || "128Mi"}"
+              cpu: "${toK8sResource(resources.requests?.cpuMilli, "cpu")}"
+              memory: "${toK8sResource(resources.requests?.memoryMB, "memory")}"
             limits:
-              cpu: "${resources.limits?.cpu || "250m"}"
-              memory: "${resources.limits?.memory || "256Mi"}"`;
+              cpu: "${toK8sResource(resources.limits?.cpuMilli, "cpu")}"
+              memory: "${toK8sResource(resources.limits?.memoryMB, "memory")}"`;
 }
 
 function generateVolumeMountsBlock(volumes: any[]): string {
@@ -302,7 +359,39 @@ function generateImagePullSecretYaml(
   );
 }
 
-export function generateK8sManifests(app: IApplication): {
+// Utility to ensure resource values are in correct string format for k8s
+function toK8sResource(
+  val: string | number | undefined,
+  type: "cpu" | "memory"
+): string {
+  if (val === undefined || val === null || val === "")
+    return type === "cpu" ? "0m" : "0Mi";
+  if (typeof val === "number") {
+    if (type === "cpu") {
+      // If value is less than 1, treat as millicores (e.g., 20 -> 20m)
+      if (val < 1) return `${Math.round(val * 1000)}m`;
+      return `${val}m`;
+    }
+    if (type === "memory") return `${val}Mi`;
+  }
+  if (typeof val === "string") {
+    // If already ends with m, Mi, Gi, etc., return as is
+    if (type === "cpu" && /m$/.test(val)) return val;
+    if (type === "memory" && /(Mi|Gi)$/.test(val)) return val;
+    // If it's a plain number string, add suffix
+    if (/^\d+$/.test(val)) {
+      return type === "cpu" ? `${val}m` : `${val}Mi`;
+    }
+    // If it's a float string for cpu, convert to millicores
+    if (type === "cpu" && /^\d*\.\d+$/.test(val)) {
+      return `${Math.round(parseFloat(val) * 1000)}m`;
+    }
+    return val;
+  }
+  return type === "cpu" ? "0m" : "0Mi";
+}
+
+export default function generateK8sManifests(app: IApplication): {
   deploymentYaml: string;
   serviceYaml: string;
   ingressYaml: string;
@@ -334,7 +423,10 @@ export function generateK8sManifests(app: IApplication): {
   const servicePortsBlock = generateServicePortsBlock(sanitizedApp.ports);
   const secretYaml = generateSecretYaml(sanitizedApp, namespace);
   const imagePullSecretYaml = generateImagePullSecretYaml(app, namespace);
-  const ingressYaml = generateIngressYaml(sanitizedApp, namespace);
+  const ingressYaml = generateIngressYamlWithDeployment(
+    sanitizedApp,
+    namespace
+  );
 
   const deployment = `apiVersion: apps/v1
 kind: Deployment
@@ -343,20 +435,23 @@ metadata:
   namespace: ${namespace}
   labels:
     app: ${sanitizedApp.name}
+    deployment: ${sanitizedApp.deploymentName}
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: ${sanitizedApp.name}
+      deployment: ${sanitizedApp.deploymentName}
   template:
     metadata:
       labels:
         app: ${sanitizedApp.name}
+        deployment: ${sanitizedApp.deploymentName}
     spec:
       containers:
         - name: ${sanitizedApp.name}
           image: ${sanitizedApp.imageUrl}:${sanitizedApp.imageTag}
-${envSection}${portsBlock ? portsBlock + "\n" : ""}${
+${envSection ? envSection + "\n" : ""}${portsBlock ? portsBlock + "\n" : ""}${
     commandBlock ? commandBlock + "\n" : ""
   }${argsBlock ? argsBlock + "\n" : ""}${
     resourcesBlock ? resourcesBlock + "\n" : ""
@@ -364,8 +459,7 @@ ${envSection}${portsBlock ? portsBlock + "\n" : ""}${
     readinessProbeBlock ? readinessProbeBlock + "\n" : ""
   }${livenessProbeBlock ? livenessProbeBlock + "\n" : ""}${
     affinityBlock ? affinityBlock + "\n" : ""
-  }
-${volumesBlock ? volumesBlock + "\n" : ""}${
+  }${volumesBlock ? volumesBlock + "\n" : ""}${
     tolerationsBlock ? tolerationsBlock : ""
   }${
     app.credentials && app.credentials.length > 0
@@ -380,10 +474,12 @@ metadata:
   namespace: ${namespace}
   labels:
     app: ${sanitizedApp.name}
+    deployment: ${sanitizedApp.deploymentName}
 spec:
   type: ClusterIP
   selector:
     app: ${sanitizedApp.name}
+    deployment: ${sanitizedApp.deploymentName}
   ports:
 ${servicePortsBlock}
 `;

@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import Application from "../../models/application.model";
-import { asyncHandler } from "../../utils/handlers/asyncHandler";
+import asyncHandler from "../../utils/handlers/asyncHandler";
 import { getNamespace, getResourceName } from "../../utils/k8s/k8sHelpers";
 import { mapPorts } from "../../utils/k8s/portHelpers";
 import { checkResourceQuota } from "../../utils/k8s/resourceQuota";
-import { log, formatNotification } from "../../utils/logging/logger";
+import log, { formatNotification } from "../../utils/logging/logger";
 
 const updateApplication = asyncHandler(async (req: Request, res: Response) => {
   const {
@@ -22,7 +22,11 @@ const updateApplication = asyncHandler(async (req: Request, res: Response) => {
     tolerations,
     affinity,
   } = req.body;
-  const credentials = req.body.credentials || [];
+  let credentials = req.body.credentials;
+  if (credentials === undefined) {
+    const existingApp = await Application.findById(req.params.id);
+    credentials = existingApp?.credentials || [];
+  }
   const owner = (req.user as any)?._id || req.body.owner;
   const namespace = getNamespace(owner.toString(), name);
   const deploymentName = getResourceName("deploy", name);
@@ -72,7 +76,7 @@ const updateApplication = asyncHandler(async (req: Request, res: Response) => {
         tolerations,
         affinity,
         owner,
-        credentials,
+        credentials, // always update credentials
       },
       { new: true }
     );

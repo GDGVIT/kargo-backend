@@ -1,7 +1,7 @@
 import { Request } from "express";
 import User from "../../models/user.model";
-import type { Document } from "mongoose";
 import IUser from "../../types/user.types";
+import { Document } from "mongoose";
 
 async function getUserFromSession(
   req: Request

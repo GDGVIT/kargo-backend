@@ -1,17 +1,17 @@
 import mongoose, { Document, Schema } from "mongoose";
-import { IApplication } from "../types/application.types";
+import IApplication from "../types/application.types";
 
-const ResourceSchema = new Schema(
+export const ResourceSchema = new Schema(
   {
-    cpu: String,
-    memory: String,
+    cpuMilli: { type: Number, min: 0 }, // e.g., 250 = 0.25 vCPU
+    memoryMB: { type: Number, min: 0 }, // e.g., 512
+    storageGB: { type: Number, min: 0 }, // e.g., 10
   },
   { _id: false }
 );
 
 const PortSchema = new Schema(
   {
-    name: String,
     containerPort: { type: Number, required: true },
     protocol: String,
     subdomain: String,

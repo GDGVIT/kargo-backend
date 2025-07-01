@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import User from "../../models/user.model";
-import { log, formatNotification } from "../../utils/logging/logger";
+import log, { formatNotification } from "../../utils/logging/logger";
 
 // Get total resource usage and allowed for a user
 const getUserResourceUsage = async (
@@ -37,8 +37,10 @@ const getUserResourceUsage = async (
       planResources = (user.plan as any).resources || {};
     }
     const extra = user.extraResources || {};
-    function parse(val: string | undefined) {
-      if (!val) return 0;
+    function parse(val: string | number | undefined | null): number {
+      if (val === undefined || val === null || val === "") return 0;
+      if (typeof val === "number") return val;
+      if (typeof val !== "string") return 0;
       if (val.endsWith("m")) return parseInt(val) / 1000;
       if (val.endsWith("Mi")) return parseInt(val);
       if (val.endsWith("Gi")) return parseInt(val) * 1024;
@@ -46,14 +48,24 @@ const getUserResourceUsage = async (
     }
     const allowed = {
       requests: {
-        cpu: parse(planResources.requests?.cpu) + parse(extra.requests?.cpu),
-        memory:
-          parse(planResources.requests?.memory) + parse(extra.requests?.memory),
+        cpuMilli:
+          parse(planResources.requests?.cpuMilli) +
+          parse(extra.requests?.cpuMilli),
+        memoryMB:
+          parse(planResources.requests?.memoryMB) +
+          parse(extra.requests?.memoryMB),
+        storageGB:
+          parse(planResources.requests?.storageGB) +
+          parse(extra.requests?.storageGB),
       },
       limits: {
-        cpu: parse(planResources.limits?.cpu) + parse(extra.limits?.cpu),
-        memory:
-          parse(planResources.limits?.memory) + parse(extra.limits?.memory),
+        cpuMilli:
+          parse(planResources.limits?.cpuMilli) + parse(extra.limits?.cpuMilli),
+        memoryMB:
+          parse(planResources.limits?.memoryMB) + parse(extra.limits?.memoryMB),
+        storageGB:
+          parse(planResources.limits?.storageGB) +
+          parse(extra.limits?.storageGB),
       },
     };
     // Sum all app resource usage for this user
@@ -62,14 +74,16 @@ const getUserResourceUsage = async (
       await import("../../models/application.model")
     ).default.find({ owner: userIdForQuery });
     const usage = {
-      requests: { cpu: 0, memory: 0 },
-      limits: { cpu: 0, memory: 0 },
+      requests: { cpuMilli: 0, memoryMB: 0, storageGB: 0 },
+      limits: { cpuMilli: 0, memoryMB: 0, storageGB: 0 },
     };
     for (const app of apps) {
-      usage.requests.cpu += parse(app.resources?.requests?.cpu);
-      usage.requests.memory += parse(app.resources?.requests?.memory);
-      usage.limits.cpu += parse(app.resources?.limits?.cpu);
-      usage.limits.memory += parse(app.resources?.limits?.memory);
+      usage.requests.cpuMilli += parse(app.resources?.requests?.cpuMilli);
+      usage.requests.memoryMB += parse(app.resources?.requests?.memoryMB);
+      usage.requests.storageGB += parse(app.resources?.requests?.storageGB);
+      usage.limits.cpuMilli += parse(app.resources?.limits?.cpuMilli);
+      usage.limits.memoryMB += parse(app.resources?.limits?.memoryMB);
+      usage.limits.storageGB += parse(app.resources?.limits?.storageGB);
     }
     return res.json({ allowed, usage });
   } catch (err) {

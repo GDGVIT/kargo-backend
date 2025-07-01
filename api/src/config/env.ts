@@ -1,6 +1,6 @@
 import path from "path";
 import dotenv from "dotenv";
-import { log } from "../utils/logging/logger";
+import log from "../utils/logging/logger";
 
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
@@ -23,6 +23,9 @@ const REQUIRED_ENV_VARS = [
   "INGRESS_BASE_DOMAIN",
   "MANIFESTS_DIR",
   "GROQ",
+  "RAZORPAY_KEY_ID",
+  "RAZORPAY_KEY_SECRET",
+  "PROMETHEUS_URL",
 ];
 
 const env = {
@@ -71,6 +74,14 @@ const env = {
 
   // GROQ API key or endpoint
   GROQ: process.env.GROQ,
+
+  // Razorpay
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
+
+  // Prometheus URL for metrics
+  PROMETHEUS_URL: process.env.PROMETHEUS_URL || "http://localhost:9090",
 };
 
 const missingVars = REQUIRED_ENV_VARS.filter(

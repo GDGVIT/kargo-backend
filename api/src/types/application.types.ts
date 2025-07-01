@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 
-export interface IApplication {
+export interface Resource {
+  cpuMilli?: number;
+  memoryMB?: number;
+  storageGB?: number;
+}
+export default interface IApplication {
   _id?: mongoose.Types.ObjectId | string;
   name: string;
   imageUrl: string;
@@ -11,11 +16,10 @@ export interface IApplication {
   env?: Record<string, string>;
   owner: mongoose.Types.ObjectId;
   resources?: {
-    requests?: { cpu?: string; memory?: string };
-    limits?: { cpu?: string; memory?: string };
+    requests?: Resource;
+    limits?: Resource;
   };
   ports?: Array<{
-    name?: string;
     containerPort: number;
     protocol?: string;
     subdomain?: string;
