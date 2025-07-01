@@ -14,6 +14,7 @@ import subprocess
 import shutil
 import os
 from urllib.parse import urlparse
+import fnmatch
 from pathlib import Path
 
 load_dotenv()
@@ -192,6 +193,7 @@ Only include what's clearly evident or logically inferred from the codebase. Avo
         model_name="llama-3.3-70b-versatile",
         max_tokens=2000,
     )
+    directory_structure = directory_structure[:7000] if len(directory_structure) > 7000 else directory_structure
     combine_prompt = directory_structure+"""
     You will be given a passage containing **compiled information extracted from a codebase** using earlier prompts that analyze various components relevant for building Dockerfiles and Docker Compose configurations.
 Your task is to:
@@ -232,35 +234,69 @@ The input will be enclosed in triple backticks:
 
 
 
-def get_folder_structure(repo_root_path: Path, ignore_patterns: list = None, max_depth: int = 8) -> str:
+def get_folder_structure(repo_root_path: Path, ignore_patterns: list = None, max_depth: int = 5) -> str:
     """
-    Generates a string representation of the folder structure of a repository.
+    Generates a string representation of the folder structure, optimized for
+    viewing files relevant to Dockerfile/docker-compose development.
+
+    This function aggressively ignores common files and directories that are not
+    typically included in a production Docker image, such as test suites,
+    documentation, local virtual environments, and build artifacts.
 
     Args:
-        repo_root_path (Path): The absolute path to the root of the cloned repository.
-        ignore_patterns (list, optional): List of directory/file names to ignore.
-                                          Defaults to common patterns.
-        max_depth (int, optional): Maximum depth to traverse. 0 means no limit (within reason).
+        repo_root_path (Path): The absolute path to the root of the repository.
+        ignore_patterns (list, optional): A list of glob patterns for files/directories
+                                          to ignore. If None, a comprehensive list
+                                          for Docker development is used.
+        max_depth (int, optional): Maximum depth to traverse. Defaults to 5, which is
+                                   usually sufficient for a high-level overview.
 
     Returns:
         str: A string representing the folder structure.
     """
-    if ignore_patterns is None:
-        ignore_patterns = ['.git', 'node_modules', '__pycache__', 'dist', 'build', 'target', '.venv', 'venv', '*.egg-info']
+    if not repo_root_path.is_dir():
+        return f"Error: Provided path '{repo_root_path}' is not a valid directory."
 
-    structure_lines = [f"Repository Root: {repo_root_path.name}"]
+    # A more comprehensive ignore list tailored for creating Docker images.
+    # We ignore anything that isn't part of the final application runtime.
+    if ignore_patterns is None:
+        ignore_patterns = [
+            # Version control
+            '.git',
+            # Python specific
+            '__pycache__', '*.pyc', '*.pyo', '*.pyd', '*.egg-info', 'pip-wheel-metadata',
+            # Virtual environments
+            '.venv', 'venv', 'env', 'ENV',
+            # IDE / Editor config
+            '.vscode', '.idea', '.project', '.settings',
+            # Build artifacts
+            'build', 'dist', 'target', 'out', 'bin',
+            # Dependency caches
+            'node_modules', 'bower_components',
+            # Testing
+            'tests', 'test', '*.test.js', '*.spec.js', 'pytest.ini', '.pytest_cache',
+            # Documentation
+            'docs', 'site', 'mkdocs.yml',
+            # CI/CD
+            '.github', '.gitlab-ci.yml', '.circleci',
+            # OS specific
+            '.DS_Store', 'Thumbs.db',
+            # Logs and temporary files
+            '*.log', '*.tmp', '*.swp',
+            # Docker context itself
+            '.dockerignore',
+        ]
+
+    structure_lines = [f"Repository Structure: {repo_root_path.name}"]
     prefix_item = "├── "
     prefix_last_item = "└── "
     prefix_indent = "│   "
     prefix_empty_indent = "    "
 
-    def _should_ignore(path_obj: Path, root_path: Path) -> bool:
-        relative_path_parts = path_obj.relative_to(root_path).parts
+    def _should_ignore(path_obj: Path) -> bool:
+        """Checks if a path name matches any of the ignore patterns."""
         for pattern in ignore_patterns:
-            if pattern.startswith('*.'): # Simple extension check e.g. *.pyc
-                if path_obj.name.endswith(pattern[1:]):
-                    return True
-            elif pattern in relative_path_parts or path_obj.name == pattern:
+            if fnmatch.fnmatch(path_obj.name, pattern):
                 return True
         return False
 
@@ -269,16 +305,15 @@ def get_folder_structure(repo_root_path: Path, ignore_patterns: list = None, max
             structure_lines.append(f"{current_prefix}{prefix_last_item}... (max depth reached)")
             return
 
-        items = []
         try:
-            for item in sorted(os.listdir(current_path)): # Sort for consistent output
-                item_path = current_path / item
-                if not _should_ignore(item_path, repo_root_path):
-                    items.append(item_path)
+            # Filter out ignored items before processing
+            items = [
+                item for item in sorted(current_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+                if not _should_ignore(item)
+            ]
         except OSError as e:
             structure_lines.append(f"{current_prefix}└── [Error reading: {e.strerror}]")
             return
-
 
         for i, item_path in enumerate(items):
             is_last = (i == len(items) - 1)
@@ -659,16 +694,25 @@ def get_repo_code_as_string_and_volume_snippets(
 def dockerise(url):
     code_str, vol_snippets, directory_structure = get_repo_code_as_string_and_volume_snippets(repo_url_small)
     code_str = "".join(code_str)
-    vol_snippets = "Possible volumes\n"+("".join(vol_snippets))
+    vol_snippets = "".join(vol_snippets)
+
+    if len(vol_snippets) < 7000:
+        vol_snippets = "Possible volumes\n"+("".join(vol_snippets))
+    else:
+        vol_snippets = "Possible volumes\n"+("".join(vol_snippets))
+        vol_snippets = vol_snippets[:7000]
     ports = "Possible ports\n"+("".join(extract_port_snippets(code_str)))
+
     if ports == []:
         ports = "None"
     if vol_snippets == []:
         vol_snippets = "None"
+
     result = vol_snippets+"\n"+ports
 
 
     docker = large_summariser(result, directory_structure)
+
     # If the output is a dict, try to extract the main text
     if isinstance(docker, dict):
         if 'output_text' in docker:
@@ -692,25 +736,12 @@ def dockerise(url):
 
 if __name__ == "__main__":
     repo_url_small = "https://github.com/tiangolo/fastapi"
-    repo_url_small = "https://github.com/automatisch/automatisch"
-#    repo_url_small = "https://github.com/Noel-Alex/ultrachat"
-    code_str, vol_snippets, _ = get_repo_code_as_string_and_volume_snippets(repo_url_small)
-    ports = extract_port_snippets(code_str)
-    print(vol_snippets)
-    print(ports)
-    print(_)
 
 
-    with open("temp.txt", "w", encoding="utf-8") as f:
-        f.write("".join(vol_snippets))
-        f.write("\nPORTS\n\n\n")
-        f.write("".join(ports))
-    with open("temp..txt", "w", encoding="utf-8") as f:
-        f.write(code_str)
 
-#    dockerfile, docker_compose = dockerise(repo_url_small)
-#    print(dockerfile)
-#    print(docker_compose)
+    dockerfile, docker_compose = dockerise(repo_url_small)
+    print(dockerfile)
+    print(docker_compose)
 
 
 
