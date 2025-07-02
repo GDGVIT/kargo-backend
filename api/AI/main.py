@@ -214,7 +214,7 @@ Organize your summary under the following structured headings:
 - **Entrypoint/Startup Requirements**
 - **Other Notable Observations (if any)**
 Ensure no unnecessary Dockerfile steps or services are introduced unless logically inferred or explicitly mentioned. Volumes should also be mounted where needed (ie for data that needs to be written down and persisted)
-the output should only consist of the dockerfile and docker-compose code block, nothing more under no circumstances. The out put should be enclosed in ```dockerfile <content>``` for the dockerfile and ```yml <content>``` for the docker-compose
+the output should only consist of the dockerfile and docker-compose code block, nothing more under no circumstances. The output should be enclosed in ```dockerfile <content>``` for the dockerfile and ```yml <content>``` for the docker-compose
 The input will be enclosed in triple backticks:  
 
 ```{text}```
