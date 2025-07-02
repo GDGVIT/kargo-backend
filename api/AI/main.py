@@ -698,6 +698,8 @@ def dockerise(repo_url_small):
         vol_snippets = []
     if code_str is None:
         code_str = ""
+    if directory_structure is None:
+        directory_structure = ""  # Fix: avoid TypeError if None
     code_str = "".join(code_str) if isinstance(code_str, (list, tuple)) else str(code_str)
     vol_snippets = "".join(vol_snippets) if isinstance(vol_snippets, (list, tuple)) else str(vol_snippets)
     if len(vol_snippets) < 7000:
