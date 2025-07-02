@@ -562,6 +562,7 @@ def _extract_volume_snippets_from_content(
     if snippets:
         unique_snippets_dict = {snip: None for snip in snippets}
         snippets = list(unique_snippets_dict.keys())
+
     return snippets
 def get_repo_code_as_string_and_volume_snippets(
     github_url: str,
@@ -693,9 +694,12 @@ def get_repo_code_as_string_and_volume_snippets(
 
 def dockerise(repo_url_small):
     code_str, vol_snippets, directory_structure = get_repo_code_as_string_and_volume_snippets(repo_url_small)
-    code_str = "".join(code_str)
-    vol_snippets = "".join(vol_snippets)
-
+    if vol_snippets is None:
+        vol_snippets = []
+    if code_str is None:
+        code_str = ""
+    code_str = "".join(code_str) if isinstance(code_str, (list, tuple)) else str(code_str)
+    vol_snippets = "".join(vol_snippets) if isinstance(vol_snippets, (list, tuple)) else str(vol_snippets)
     if len(vol_snippets) < 7000:
         vol_snippets = "Possible volumes\n"+("".join(vol_snippets))
     else:
