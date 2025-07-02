@@ -583,7 +583,7 @@ def get_repo_code_as_string_and_volume_snippets(
 
     match = re.match(r"https?://github\.com/([^/]+)/([^/.]+)(\.git)?", github_url)
     if not match:
-        return "Error: Invalid GitHub URL format.", None
+        return "Error: Invalid GitHub URL format.", None, None
     owner, repo_name = match.group(1), match.group(2)
 
     api_url = f"https://api.github.com/repos/{owner}/{repo_name}"
@@ -592,14 +592,14 @@ def get_repo_code_as_string_and_volume_snippets(
         response.raise_for_status()
         repo_data = response.json()
     except requests.exceptions.RequestException as e:
-        return f"Error: Could not fetch repository data from GitHub API: {e}", None
+        return f"Error: Could not fetch repository data from GitHub API: {e}", None, None
 
     repo_size_kb = repo_data.get("size", 0)
     repo_size_mb = repo_size_kb / 1024
     print(f"Repository: {owner}/{repo_name}, Reported size: {repo_size_mb:.2f} MB")
 
     if repo_size_mb > max_size_mb:
-        return f"Error: Repository size ({repo_size_mb:.2f}MB) > max ({max_size_mb}MB).", None
+        return f"Error: Repository size ({repo_size_mb:.2f}MB) > max ({max_size_mb}MB).", None, None
 
     temp_dir_path_obj = Path(tempfile.mkdtemp())
     print(f"Cloning into temporary directory: {temp_dir_path_obj}...")
@@ -616,10 +616,10 @@ def get_repo_code_as_string_and_volume_snippets(
         # Attempt to decode if bytes
         if isinstance(e.stderr, bytes):
             error_message = f"Error: Could not clone repository.\nGit stderr: {e.stderr.decode(errors='replace')}\nGit stdout: {e.stdout.decode(errors='replace')}"
-        return error_message, None
+        return error_message, None, None
     except FileNotFoundError:
         shutil.rmtree(temp_dir_path_obj)
-        return "Error: Git command not found. Ensure Git is installed and in PATH.", None
+        return "Error: Git command not found. Ensure Git is installed and in PATH.", None, None
 
     all_code_string = ""
     all_volume_snippets = []
