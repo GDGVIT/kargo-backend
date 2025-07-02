@@ -691,7 +691,7 @@ def get_repo_code_as_string_and_volume_snippets(
     return all_code_string, all_volume_snippets, get_folder_structure(temp_dir_path_obj)
 
 
-def dockerise(url):
+def dockerise(repo_url_small):
     code_str, vol_snippets, directory_structure = get_repo_code_as_string_and_volume_snippets(repo_url_small)
     code_str = "".join(code_str)
     vol_snippets = "".join(vol_snippets)
