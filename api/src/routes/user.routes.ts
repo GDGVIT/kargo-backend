@@ -13,6 +13,7 @@ import deleteRegistryCredential from "../controllers/user/deleteRegistryCredenti
 import updateUserExtraResources from "../controllers/user/updateUserExtraResources.controller";
 import updateUserPlan from "../controllers/user/updateUserPlan.controller";
 import getAllUsers from "../controllers/user/getAllUsers.controller";
+import getUserSettingsStats from "../controllers/user/getUserSettingsStats.controller";
 
 const router = Router();
 
@@ -56,5 +57,12 @@ router.get("/", ensureAdmin, asyncHandler(getAllUsers));
 router.get("/me/credentials", asyncHandler(getRegistryCredentials));
 router.post("/me/credentials", asyncHandler(upsertRegistryCredential));
 router.delete("/me/credentials", asyncHandler(deleteRegistryCredential));
+
+// Add user stats route
+router.get(
+  "/me/settings-stats",
+  ensureAuthenticated,
+  asyncHandler(getUserSettingsStats)
+);
 
 export default router;
