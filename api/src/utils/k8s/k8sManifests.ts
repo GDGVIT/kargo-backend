@@ -1,12 +1,12 @@
 import type IApplication from "../../types/application.types";
-import generateDeploymentYaml from "./generators/generateDeploymentYaml";
-import generateServiceYaml from "./generators/generateServiceYaml";
-import generateSecretYaml from "./generators/generateSecretYaml";
-import generateImagePullSecretYaml from "./generators/generateImagePullSecretYaml";
-import generatePVCYaml from "./generators/generatePVCYaml";
-import generatePVYaml from "./generators/generatePVYaml";
+import generateDeploymentYaml from "./generators/yamls/generateDeploymentYaml";
+import generateServiceYaml from "./generators/yamls/generateServiceYaml";
+import generateSecretYaml from "./generators/yamls/generateSecretYaml";
+import generateImagePullSecretYaml from "./generators/yamls/generateImagePullSecretYaml";
+import generatePVCYaml from "./generators/yamls/generatePVCYaml";
+import generatePVYaml from "./generators/yamls/generatePVYaml";
 import stripDates from "./helpers/stripDates";
-import generateIngressYamlWithDeployment from "./generators/generateIngressYamlWithDeployment";
+import generateIngressYamlWithDeployment from "./generators/yamls/generateIngressYamlWithDeployment";
 
 export default function generateK8sManifests(
   app: IApplication

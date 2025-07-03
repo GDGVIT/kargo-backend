@@ -1,13 +1,13 @@
-import { generateEnvFromSecretBlock } from "./generateEnvFromSecretBlock";
-import { generateResourcesBlock } from "./generateResourcesBlock";
-import { generatePortsBlock } from "./generatePortsBlock";
-import { generateVolumeMountsBlock } from "./generateVolumeMountsBlock";
-import { generateVolumesBlock } from "./generateVolumesBlock";
-import { generateCommandBlock } from "./generateCommandBlock";
-import { generateArgsBlock } from "./generateArgsBlock";
-import { generateProbeBlock } from "./generateProbeBlock";
-import { generateAffinityBlock } from "./generateAffinityBlock";
-import { generateTolerationsBlock } from "./generateTolerationsBlock";
+import { generateEnvFromSecretBlock } from "../generateEnvFromSecretBlock";
+import { generateResourcesBlock } from "../generateResourcesBlock";
+import { generatePortsBlock } from "../generatePortsBlock";
+import { generateVolumeMountsBlock } from "../generateVolumeMountsBlock";
+import { generateVolumesBlock } from "../generateVolumesBlock";
+import { generateCommandBlock } from "../generateCommandBlock";
+import { generateArgsBlock } from "../generateArgsBlock";
+import { generateProbeBlock } from "../generateProbeBlock";
+import { generateAffinityBlock } from "../generateAffinityBlock";
+import { generateTolerationsBlock } from "../generateTolerationsBlock";
 
 export default function generateDeploymentYaml(
   sanitizedApp: any,

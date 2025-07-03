@@ -1,4 +1,4 @@
-import { generateServicePortsBlock } from "./generateServicePortsBlock";
+import { generateServicePortsBlock } from "../generateServicePortsBlock";
 
 export default function generateServiceYaml(
   sanitizedApp: any,

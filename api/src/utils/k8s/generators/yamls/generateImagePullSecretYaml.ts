@@ -1,4 +1,4 @@
-import type IApplication from "../../../types/application.types";
+import type IApplication from "../../../../types/application.types";
 
 export default function generateImagePullSecretYaml(
   app: IApplication,
