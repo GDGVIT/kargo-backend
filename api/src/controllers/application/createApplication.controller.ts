@@ -1,8 +1,11 @@
 import { Request, Response } from "express";
 import Application from "../../models/application.model";
 import asyncHandler from "../../utils/handlers/asyncHandler";
-import { getNamespace, getResourceName } from "../../utils/k8s/k8sHelpers";
-import { mapPorts } from "../../utils/k8s/portHelpers";
+import {
+  getNamespace,
+  getResourceName,
+} from "../../utils/k8s/helpers/k8sHelpers";
+import { mapPorts } from "../../utils/k8s/helpers/portHelpers";
 import log, { formatNotification } from "../../utils/logging/logger";
 
 const createApplication = asyncHandler(async (req: Request, res: Response) => {
