@@ -8,9 +8,15 @@ export default function generatePV(
   appId: string
 ): string {
   if (!volume.name || !volume.size) return "";
-  // Use env var for root path
-  const rootPath = env.VOLUME_ROOT_PATH || "/mnt/kargo-volumes";
-  // Use path.posix for k8s hostPath (even on Windows dev)
+  // Use env var for root path, must be Linux-style absolute path
+  let rootPath = env.VOLUME_ROOT_PATH;
+  // Ensure rootPath is Linux-style absolute
+  if (!rootPath.startsWith("/")) {
+    throw new Error(
+      `VOLUME_ROOT_PATH must be a Linux-style absolute path (starts with /), got: ${rootPath}`
+    );
+  }
+  // Always use posix.join for k8s hostPath
   const hostPath = path.posix.join(rootPath, userId, appId, volume.name);
   return [
     `apiVersion: v1`,

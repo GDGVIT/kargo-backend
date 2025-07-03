@@ -31,7 +31,19 @@ async function applyManifestSequence(
   res: Response
 ) {
   try {
+    // Apply namespace first
     await exec(`kubectl apply -f namespace.yaml`, { cwd: appDir });
+
+    // Apply PVs first if present
+    if (fs.existsSync(path.join(appDir, "pvs.yaml"))) {
+      await exec(`kubectl apply -f pvs.yaml`, { cwd: appDir });
+    }
+
+    // Apply PVCs next if present
+    if (fs.existsSync(path.join(appDir, "pvcs.yaml"))) {
+      await exec(`kubectl apply -f pvcs.yaml`, { cwd: appDir });
+    }
+
     await exec(`kubectl apply -f secret.yaml`, { cwd: appDir });
     if (fs.existsSync(path.join(appDir, "imagepullsecret.yaml"))) {
       await exec(`kubectl apply -f imagepullsecret.yaml`, { cwd: appDir });
@@ -130,11 +142,21 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
     }
   }
 
-  // Apply PVCs first if present
+  // Apply namespace first
+  await exec(`kubectl apply -f namespace.yaml`, { cwd: appDir });
+
+  // Apply PVs first if present
+  if (manifestsResult.pvs) {
+    fs.writeFileSync(path.join(appDir, "pvs.yaml"), manifestsResult.pvs);
+    await exec(`kubectl apply -f pvs.yaml`, { cwd: appDir });
+  }
+
+  // Apply PVCs next if present
   if (pvcsYaml) {
     await exec(`kubectl apply -f pvcs.yaml`, { cwd: appDir });
   }
 
+  // Now apply the rest (deployment, service, ingress, secrets, etc.)
   await applyManifestSequence(appDir, app.name, manifestFiles, res);
 });
 

@@ -14,8 +14,42 @@ export default function generateK8sManifests(
   // Sanitize app object
   const sanitizedApp = stripDates(app);
   const namespace = app.namespace || "default";
+  const userId = (app.owner as any)?.toString?.() || app.owner;
+  const appId = (app._id as any)?.toString?.() || app._id;
+
+  // Auto-generate a single volume if storage is set in resources
+  let autoVolume = null;
+  let storageGB = 0;
+  if (
+    app.resources?.requests?.storageGB &&
+    app.resources.requests.storageGB > 0
+  ) {
+    storageGB = app.resources.requests.storageGB;
+  } else if (
+    app.resources?.limits?.storageGB &&
+    app.resources.limits.storageGB > 0
+  ) {
+    storageGB = app.resources.limits.storageGB;
+  }
+  if (storageGB > 0) {
+    autoVolume = {
+      name: `${app.name}-data`,
+      mountPath: "/data",
+      size: `${storageGB}Gi`,
+      accessModes: ["ReadWriteOnce"],
+      storageClassName: "manual",
+      readOnly: false,
+      type: "pvc",
+    };
+  }
+  // Only use the auto-generated volume if present
+  const volumes = autoVolume ? [autoVolume] : [];
+
   // Generate all manifests
-  const deploymentYaml = generateDEployment(sanitizedApp, namespace);
+  const deploymentYaml = generateDEployment(
+    { ...sanitizedApp, volumes },
+    namespace
+  );
   const serviceYaml = generateService(sanitizedApp, namespace);
   const ingressYaml = generateIngress(sanitizedApp, namespace);
   const secretYaml = generateSecret(sanitizedApp, namespace);
@@ -23,15 +57,15 @@ export default function generateK8sManifests(
     typeof generateImagePullSecret === "function"
       ? generateImagePullSecret(sanitizedApp, namespace)
       : "";
-  const userId = (app.owner as any)?.toString?.() || app.owner;
-  const appId = (app._id as any)?.toString?.() || app._id;
+
   // Generate PV and PVC manifests for persistent volumes
-  const pvManifests = (app.volumes || [])
+  const pvManifests = volumes
     .map((v) => generatePV(v, namespace, userId, appId))
     .filter((yaml) => yaml);
-  const pvcManifests = (app.volumes || [])
+  const pvcManifests = volumes
     .map((v) => generatePVC(v, namespace))
     .filter((yaml) => yaml);
+
   // Compose output
   const manifests: Record<string, string> = {
     deployment: deploymentYaml || "",

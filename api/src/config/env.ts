@@ -84,7 +84,7 @@ const env = {
   PROMETHEUS_URL: process.env.PROMETHEUS_URL || "http://localhost:9090",
 
   // Persistent volume root directory
-  VOLUME_ROOT_PATH: process.env.VOLUME_ROOT_PATH,
+  VOLUME_ROOT_PATH: process.env.VOLUME_ROOT_PATH || "/mnt/kargo-volumes",
 };
 
 const missingVars = REQUIRED_ENV_VARS.filter(
