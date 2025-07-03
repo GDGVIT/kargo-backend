@@ -91,8 +91,9 @@ function generateIngressYamlWithDeployment(
   if (ingressPorts.length === 0) return "";
   const rules = ingressPorts
     .map((p: any) => {
-      let host = p.subdomain;
-      if (host.endsWith(".")) host = host.slice(0, -1);
+      const host = p.subdomain.endsWith(".")
+        ? p.subdomain.slice(0, -1)
+        : p.subdomain;
       return [
         `    - host: ${host}`,
         `      http:`,
@@ -101,9 +102,9 @@ function generateIngressYamlWithDeployment(
         `            pathType: Prefix`,
         `            backend:`,
         `              service:`,
-        `                name: ${sanitizedApp.serviceName}`,
+        `                name: ${sanitizedApp.name}-service`,
         `                port:`,
-        `                  number: ${p.containerPort}`,
+        `                  number: ${p.servicePort || p.containerPort || 80}`,
       ].join("\n");
     })
     .join("\n");
@@ -124,8 +125,6 @@ function generateIngressYamlWithDeployment(
     `  annotations:`,
     `    kubernetes.io/ingress.class: traefik`,
     `    cert-manager.io/cluster-issuer: letsencrypt-wildcard`,
-    `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
-    `    nginx.ingress.kubernetes.io/ssl-redirect: "true"`,
     `spec:`,
     `  rules:`,
     rules,
@@ -202,7 +201,7 @@ function generateVolumeMountsBlock(volumes: any[]): string {
     volumes
       .map(
         (v: { name: string; mountPath: string }) =>
-          `            - name: ${v.name}\n              mountPath: ${v.mountPath}`
+          `            - name: ${v.name}-pvc\n              mountPath: ${v.mountPath}`
       )
       .join("\n")
   );
@@ -259,16 +258,10 @@ function generateVolumesBlock(volumes: any[]): string {
   return (
     `      volumes:\n` +
     volumes
-      .map((v: any) => {
-        if (v.claimName) {
-          return `        - name: ${v.name}\n          persistentVolumeClaim:\n            claimName: ${v.claimName}`;
-        } else if (v.configMapName) {
-          return `        - name: ${v.name}\n          configMap:\n            name: ${v.configMapName}`;
-        } else if (v.secretName) {
-          return `        - name: ${v.name}\n          secret:\n            secretName: ${v.secretName}`;
-        }
-        return `        - name: ${v.name}`;
-      })
+      .map(
+        (v: any) =>
+          `        - name: ${v.name}-pvc\n          persistentVolumeClaim:\n            claimName: ${v.name}-pvc`
+      )
       .join("\n")
   );
 }
