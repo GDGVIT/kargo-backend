@@ -1,7 +1,7 @@
 import IApplication from "../../../../types/application.types";
 import getEnvObject from "../../helpers/getEnvObject";
 
-export default function generateSecretYaml(
+export default function generateSecret(
   sanitizedApp: IApplication,
   namespace: string
 ): string {

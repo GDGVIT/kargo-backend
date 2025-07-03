@@ -9,7 +9,7 @@ import { generateProbeBlock } from "../generateProbeBlock";
 import { generateAffinityBlock } from "../generateAffinityBlock";
 import { generateTolerationsBlock } from "../generateTolerationsBlock";
 
-export default function generateDeploymentYaml(
+export default function generateDeployment(
   sanitizedApp: any,
   namespace: string
 ): string {

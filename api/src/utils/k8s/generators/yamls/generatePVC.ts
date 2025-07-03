@@ -1,7 +1,4 @@
-export default function generatePVCYaml(
-  volume: any,
-  namespace: string
-): string {
+export default function generatePVC(volume: any, namespace: string): string {
   if (!volume.name || !volume.size) return "";
   return [
     `apiVersion: v1`,

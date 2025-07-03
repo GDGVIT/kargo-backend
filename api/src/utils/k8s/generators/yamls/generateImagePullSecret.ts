@@ -1,6 +1,6 @@
 import type IApplication from "../../../../types/application.types";
 
-export default function generateImagePullSecretYaml(
+export default function generateImagePullSecret(
   app: IApplication,
   namespace: string
 ): string | undefined {

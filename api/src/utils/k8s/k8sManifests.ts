@@ -1,12 +1,12 @@
 import type IApplication from "../../types/application.types";
-import generateDeploymentYaml from "./generators/yamls/generateDeploymentYaml";
-import generateServiceYaml from "./generators/yamls/generateServiceYaml";
-import generateSecretYaml from "./generators/yamls/generateSecretYaml";
-import generateImagePullSecretYaml from "./generators/yamls/generateImagePullSecretYaml";
-import generatePVCYaml from "./generators/yamls/generatePVCYaml";
-import generatePVYaml from "./generators/yamls/generatePVYaml";
+import generateDEployment from "./generators/yamls/generateDeployment";
+import generateService from "./generators/yamls/generateServiceYaml";
+import generateSecret from "./generators/yamls/generateSecret";
+import generateImagePullSecret from "./generators/yamls/generateImagePullSecret";
+import generatePVC from "./generators/yamls/generatePVC";
+import generatePV from "./generators/yamls/generatePV";
 import stripDates from "./helpers/stripDates";
-import generateIngressYamlWithDeployment from "./generators/yamls/generateIngressYamlWithDeployment";
+import generateIngress from "./generators/yamls/generateIngress";
 
 export default function generateK8sManifests(
   app: IApplication
@@ -15,25 +15,22 @@ export default function generateK8sManifests(
   const sanitizedApp = stripDates(app);
   const namespace = app.namespace || "default";
   // Generate all manifests
-  const deploymentYaml = generateDeploymentYaml(sanitizedApp, namespace);
-  const serviceYaml = generateServiceYaml(sanitizedApp, namespace);
-  const ingressYaml = generateIngressYamlWithDeployment(
-    sanitizedApp,
-    namespace
-  );
-  const secretYaml = generateSecretYaml(sanitizedApp, namespace);
+  const deploymentYaml = generateDEployment(sanitizedApp, namespace);
+  const serviceYaml = generateService(sanitizedApp, namespace);
+  const ingressYaml = generateIngress(sanitizedApp, namespace);
+  const secretYaml = generateSecret(sanitizedApp, namespace);
   const imagePullSecretYaml =
-    typeof generateImagePullSecretYaml === "function"
-      ? generateImagePullSecretYaml(sanitizedApp, namespace)
+    typeof generateImagePullSecret === "function"
+      ? generateImagePullSecret(sanitizedApp, namespace)
       : "";
   const userId = (app.owner as any)?.toString?.() || app.owner;
   const appId = (app._id as any)?.toString?.() || app._id;
   // Generate PV and PVC manifests for persistent volumes
   const pvManifests = (app.volumes || [])
-    .map((v) => generatePVYaml(v, namespace, userId, appId))
+    .map((v) => generatePV(v, namespace, userId, appId))
     .filter((yaml) => yaml);
   const pvcManifests = (app.volumes || [])
-    .map((v) => generatePVCYaml(v, namespace))
+    .map((v) => generatePVC(v, namespace))
     .filter((yaml) => yaml);
   // Compose output
   const manifests: Record<string, string> = {

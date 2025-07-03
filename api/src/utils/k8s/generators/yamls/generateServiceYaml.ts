@@ -1,6 +1,6 @@
 import { generateServicePortsBlock } from "../generateServicePortsBlock";
 
-export default function generateServiceYaml(
+export default function generateService(
   sanitizedApp: any,
   namespace: string
 ): string {

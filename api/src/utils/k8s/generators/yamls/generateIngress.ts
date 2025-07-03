@@ -1,4 +1,4 @@
-export default function generateIngressYamlWithDeployment(
+export default function generateIngress(
   sanitizedApp: any,
   namespace: string
 ): string {

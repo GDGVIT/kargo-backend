@@ -1,7 +1,7 @@
 import env from "../../../../config/env";
 import path from "path";
 
-export default function generatePVYaml(
+export default function generatePV(
   volume: any,
   namespace: string,
   userId: string,
