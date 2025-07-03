@@ -28,58 +28,6 @@ function stripDates(obj: any): any {
   return internalStrip(obj);
 }
 
-function generateIngressYaml(sanitizedApp: any, namespace: string): string {
-  const ingressPorts = (sanitizedApp.ports || []).filter(
-    (p: any) => typeof p.subdomain === "string" && p.subdomain.trim() !== ""
-  );
-  if (ingressPorts.length === 0) return "";
-  const rules = ingressPorts
-    .map((p: any) => {
-      let host = p.subdomain;
-      if (host.endsWith(".")) host = host.slice(0, -1);
-      return [
-        `    - host: ${host}`,
-        `      http:`,
-        `        paths:`,
-        `          - path: /`,
-        `            pathType: Prefix`,
-        `            backend:`,
-        `              service:`,
-        `                name: ${sanitizedApp.serviceName}`,
-        `                port:`,
-        `                  number: ${p.containerPort}`,
-      ].join("\n");
-    })
-    .join("\n");
-  // Collect all hosts for TLS
-  const hosts = ingressPorts.map((p: any) =>
-    p.subdomain.endsWith(".") ? p.subdomain.slice(0, -1) : p.subdomain
-  );
-  return [
-    `---`,
-    `apiVersion: networking.k8s.io/v1`,
-    `kind: Ingress`,
-    `metadata:`,
-    `  name: ${sanitizedApp.name}-ingress`,
-    `  namespace: ${namespace}`,
-    `  labels:`,
-    `    app: ${sanitizedApp.name}`,
-    `    deployment: ${sanitizedApp.deploymentName}`,
-    `  annotations:`,
-    `    kubernetes.io/ingress.class: traefik`,
-    `    cert-manager.io/cluster-issuer: letsencrypt-wildcard`,
-    `    nginx.ingress.kubernetes.io/rewrite-target: /$`,
-    `    nginx.ingress.kubernetes.io/ssl-redirect: "true"`,
-    `spec:`,
-    `  rules:`,
-    rules,
-    `  tls:`,
-    `    - hosts:`,
-    ...hosts.map((h: string) => `        - ${h}`),
-    `      secretName: wildcard-tls`,
-  ].join("\n");
-}
-
 // Add deployment label to all relevant resources
 function generateIngressYamlWithDeployment(
   sanitizedApp: any,
@@ -102,7 +50,9 @@ function generateIngressYamlWithDeployment(
         `            pathType: Prefix`,
         `            backend:`,
         `              service:`,
-        `                name: ${sanitizedApp.name}-service`,
+        `                name: ${
+          sanitizedApp.serviceName || sanitizedApp.name
+        }-service`,
         `                port:`,
         `                  number: ${p.servicePort || p.containerPort || 80}`,
       ].join("\n");
@@ -216,7 +166,8 @@ function generatePVYaml(
   if (!volume.name || !volume.size) return "";
   // Use env var for root path
   const rootPath = env.VOLUME_ROOT_PATH || "/mnt/kargo-volumes";
-  const hostPath = path.posix.join(rootPath, userId, appId);
+  // Use path.posix for k8s hostPath (even on Windows dev)
+  const hostPath = path.posix.join(rootPath, userId, appId, volume.name);
   return [
     `apiVersion: v1`,
     `kind: PersistentVolume`,
@@ -229,9 +180,9 @@ function generatePVYaml(
     `    storage: ${volume.size}`,
     `  accessModes: ["ReadWriteOnce"]`,
     `  persistentVolumeReclaimPolicy: Retain`,
+    `  storageClassName: manual`,
     `  hostPath:`,
     `    path: ${hostPath}`,
-    `  storageClassName: manual`,
   ].join("\n");
 }
 
