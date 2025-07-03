@@ -82,6 +82,9 @@ const env = {
 
   // Prometheus URL for metrics
   PROMETHEUS_URL: process.env.PROMETHEUS_URL || "http://localhost:9090",
+
+  // Persistent volume root directory
+  VOLUME_ROOT_PATH: process.env.VOLUME_ROOT_PATH,
 };
 
 const missingVars = REQUIRED_ENV_VARS.filter(

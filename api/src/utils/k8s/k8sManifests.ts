@@ -1,5 +1,7 @@
 import { dump } from "js-yaml";
 import type IApplication from "../../types/application.types";
+import env from "../../config/env";
+import path from "path";
 
 function stripDates(obj: any): any {
   const seen = new WeakSet();
@@ -206,15 +208,67 @@ function generateVolumeMountsBlock(volumes: any[]): string {
   );
 }
 
+function generatePVYaml(
+  volume: any,
+  namespace: string,
+  userId: string,
+  appId: string
+): string {
+  if (!volume.name || !volume.size) return "";
+  // Use env var for root path
+  const rootPath = env.VOLUME_ROOT_PATH || "/mnt/kargo-volumes";
+  const hostPath = path.posix.join(rootPath, userId, appId);
+  return [
+    `apiVersion: v1`,
+    `kind: PersistentVolume`,
+    `metadata:`,
+    `  name: ${volume.name}-pv`,
+    `  labels:`,
+    `    app: ${namespace}`,
+    `spec:`,
+    `  capacity:`,
+    `    storage: ${volume.size}`,
+    `  accessModes: ["ReadWriteOnce"]`,
+    `  persistentVolumeReclaimPolicy: Retain`,
+    `  hostPath:`,
+    `    path: ${hostPath}`,
+    `  storageClassName: manual`,
+  ].join("\n");
+}
+
+function generatePVCYaml(volume: any, namespace: string): string {
+  if (!volume.name || !volume.size) return "";
+  return [
+    `apiVersion: v1`,
+    `kind: PersistentVolumeClaim`,
+    `metadata:`,
+    `  name: ${volume.name}-pvc`,
+    `  namespace: ${namespace}`,
+    `spec:`,
+    `  accessModes: ["ReadWriteOnce"]`,
+    `  storageClassName: manual`,
+    `  resources:`,
+    `    requests:`,
+    `      storage: ${volume.size}`,
+    `  volumeName: ${volume.name}-pv`,
+  ].join("\n");
+}
+
 function generateVolumesBlock(volumes: any[]): string {
   if (!volumes?.length) return "";
   return (
     `      volumes:\n` +
     volumes
-      .map(
-        (v: { name: string; pvcName: string }) =>
-          `        - name: ${v.name}\n          persistentVolumeClaim:\n            claimName: ${v.pvcName}`
-      )
+      .map((v: any) => {
+        if (v.claimName) {
+          return `        - name: ${v.name}\n          persistentVolumeClaim:\n            claimName: ${v.claimName}`;
+        } else if (v.configMapName) {
+          return `        - name: ${v.name}\n          configMap:\n            name: ${v.configMapName}`;
+        } else if (v.secretName) {
+          return `        - name: ${v.name}\n          secret:\n            secretName: ${v.secretName}`;
+        }
+        return `        - name: ${v.name}`;
+      })
       .join("\n")
   );
 }
@@ -391,104 +445,107 @@ function toK8sResource(
   return type === "cpu" ? "0m" : "0Mi";
 }
 
-export default function generateK8sManifests(app: IApplication): {
-  deploymentYaml: string;
-  serviceYaml: string;
-  ingressYaml: string;
-  secretYaml?: string;
-  imagePullSecretYaml?: string;
-} {
+export default function generateK8sManifests(
+  app: IApplication
+): Record<string, string> {
+  // Sanitize app object
   const sanitizedApp = stripDates(app);
-  const namespace = sanitizedApp.namespace || "default";
-
-  const envSection = generateEnvFromSecretBlock(sanitizedApp);
-  const portsBlock = generatePortsBlock(sanitizedApp.ports);
-  const commandBlock = generateCommandBlock(sanitizedApp.command);
-  const argsBlock = generateArgsBlock(sanitizedApp.args);
-  const resourcesBlock = generateResourcesBlock(sanitizedApp.resources);
-  const volumeMountsBlock = generateVolumeMountsBlock(
-    sanitizedApp.volumeMounts
-  );
-  const volumesBlock = generateVolumesBlock(sanitizedApp.volumes);
-  const readinessProbeBlock = generateProbeBlock(
-    "readinessProbe",
-    sanitizedApp.readinessProbe
-  );
-  const livenessProbeBlock = generateProbeBlock(
-    "livenessProbe",
-    sanitizedApp.livenessProbe
-  );
-  const affinityBlock = generateAffinityBlock(sanitizedApp.affinity);
-  const tolerationsBlock = generateTolerationsBlock(sanitizedApp.tolerations);
-  const servicePortsBlock = generateServicePortsBlock(sanitizedApp.ports);
-  const secretYaml = generateSecretYaml(sanitizedApp, namespace);
-  const imagePullSecretYaml = generateImagePullSecretYaml(app, namespace);
+  const namespace = app.namespace || "default";
+  // Generate all manifests
+  const deploymentYaml = generateDeploymentYaml(sanitizedApp, namespace);
+  const serviceYaml = generateServiceYaml(sanitizedApp, namespace);
   const ingressYaml = generateIngressYamlWithDeployment(
     sanitizedApp,
     namespace
   );
-
-  const deployment = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ${sanitizedApp.deploymentName}
-  namespace: ${namespace}
-  labels:
-    app: ${sanitizedApp.name}
-    deployment: ${sanitizedApp.deploymentName}
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: ${sanitizedApp.name}
-      deployment: ${sanitizedApp.deploymentName}
-  template:
-    metadata:
-      labels:
-        app: ${sanitizedApp.name}
-        deployment: ${sanitizedApp.deploymentName}
-    spec:
-      containers:
-        - name: ${sanitizedApp.name}
-          image: ${sanitizedApp.imageUrl}:${sanitizedApp.imageTag}
-${envSection ? envSection + "\n" : ""}${portsBlock ? portsBlock + "\n" : ""}${
-    commandBlock ? commandBlock + "\n" : ""
-  }${argsBlock ? argsBlock + "\n" : ""}${
-    resourcesBlock ? resourcesBlock + "\n" : ""
-  }${volumeMountsBlock ? volumeMountsBlock + "\n" : ""}${
-    readinessProbeBlock ? readinessProbeBlock + "\n" : ""
-  }${livenessProbeBlock ? livenessProbeBlock + "\n" : ""}${
-    affinityBlock ? affinityBlock + "\n" : ""
-  }${volumesBlock ? volumesBlock + "\n" : ""}${
-    tolerationsBlock ? tolerationsBlock : ""
-  }${
-    app.credentials && app.credentials.length > 0
-      ? `\n      imagePullSecrets:\n        - name: ${sanitizedApp.name}-regcred`
-      : ""
-  }`;
-
-  const service = `apiVersion: v1
-kind: Service
-metadata:
-  name: ${sanitizedApp.serviceName}
-  namespace: ${namespace}
-  labels:
-    app: ${sanitizedApp.name}
-    deployment: ${sanitizedApp.deploymentName}
-spec:
-  type: ClusterIP
-  selector:
-    app: ${sanitizedApp.name}
-    deployment: ${sanitizedApp.deploymentName}
-  ports:
-${servicePortsBlock}
-`;
-
-  return {
-    deploymentYaml: deployment,
-    serviceYaml: service,
-    ingressYaml: ingressYaml,
-    secretYaml: secretYaml || undefined,
-    imagePullSecretYaml: imagePullSecretYaml || undefined,
+  const secretYaml = generateSecretYaml(sanitizedApp, namespace);
+  const imagePullSecretYaml =
+    typeof generateImagePullSecretYaml === "function"
+      ? generateImagePullSecretYaml(sanitizedApp, namespace)
+      : "";
+  const userId = (app.owner as any)?.toString?.() || app.owner;
+  const appId = (app._id as any)?.toString?.() || app._id;
+  // Generate PV and PVC manifests for persistent volumes
+  const pvManifests = (app.volumes || [])
+    .map((v) => generatePVYaml(v, namespace, userId, appId))
+    .filter((yaml) => yaml);
+  const pvcManifests = (app.volumes || [])
+    .map((v) => generatePVCYaml(v, namespace))
+    .filter((yaml) => yaml);
+  // Compose output
+  const manifests: Record<string, string> = {
+    deployment: deploymentYaml || "",
+    service: serviceYaml || "",
+    ingress: ingressYaml || "",
+    secret: secretYaml || "",
+    imagepullsecret: imagePullSecretYaml || "",
   };
+  if (pvManifests.length) {
+    manifests["pvs"] = pvManifests.join("\n---\n");
+  }
+  if (pvcManifests.length) {
+    manifests["pvcs"] = pvcManifests.join("\n---\n");
+  }
+  return manifests;
+}
+
+function generateDeploymentYaml(sanitizedApp: any, namespace: string): string {
+  return [
+    `apiVersion: apps/v1`,
+    `kind: Deployment`,
+    `metadata:`,
+    `  name: ${sanitizedApp.deploymentName || sanitizedApp.name}-deployment`,
+    `  namespace: ${namespace}`,
+    `  labels:`,
+    `    app: ${sanitizedApp.name}`,
+    `    deployment: ${sanitizedApp.deploymentName || sanitizedApp.name}`,
+    `spec:`,
+    `  replicas: 1`,
+    `  selector:`,
+    `    matchLabels:`,
+    `      app: ${sanitizedApp.name}`,
+    `  template:`,
+    `    metadata:`,
+    `      labels:`,
+    `        app: ${sanitizedApp.name}`,
+    `        deployment: ${sanitizedApp.deploymentName || sanitizedApp.name}`,
+    `    spec:`,
+    `      containers:`,
+    `        - name: ${sanitizedApp.name}`,
+    `          image: ${sanitizedApp.imageUrl}:${sanitizedApp.imageTag}`,
+    generateEnvFromSecretBlock(sanitizedApp),
+    generateResourcesBlock(sanitizedApp.resources),
+    generatePortsBlock(sanitizedApp.ports),
+    generateVolumeMountsBlock(sanitizedApp.volumes),
+    generateCommandBlock(sanitizedApp.command),
+    generateArgsBlock(sanitizedApp.args),
+    generateProbeBlock("livenessProbe", sanitizedApp.livenessProbe),
+    generateProbeBlock("readinessProbe", sanitizedApp.readinessProbe),
+    generateAffinityBlock(sanitizedApp.affinity),
+    `      restartPolicy: Always`,
+    generateVolumesBlock(sanitizedApp.volumes),
+    generateTolerationsBlock(sanitizedApp.tolerations),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function generateServiceYaml(sanitizedApp: any, namespace: string): string {
+  return [
+    `apiVersion: v1`,
+    `kind: Service`,
+    `metadata:`,
+    `  name: ${sanitizedApp.serviceName || sanitizedApp.name}-service`,
+    `  namespace: ${namespace}`,
+    `  labels:`,
+    `    app: ${sanitizedApp.name}`,
+    `    deployment: ${sanitizedApp.deploymentName || sanitizedApp.name}`,
+    `spec:`,
+    `  selector:`,
+    `    app: ${sanitizedApp.name}`,
+    `  ports:`,
+    generateServicePortsBlock(sanitizedApp.ports),
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

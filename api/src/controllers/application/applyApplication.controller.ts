@@ -89,13 +89,15 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
   }
   fs.mkdirSync(appDir, { recursive: true });
 
+  const manifestsResult = generateK8sManifests(app);
   const {
-    deploymentYaml,
-    serviceYaml,
-    ingressYaml,
-    secretYaml,
-    imagePullSecretYaml,
-  } = generateK8sManifests(app);
+    deployment: deploymentYaml,
+    service: serviceYaml,
+    ingress: ingressYaml,
+    secret: secretYaml,
+    imagepullsecret: imagePullSecretYaml,
+    pvcs: pvcsYaml,
+  } = manifestsResult;
 
   if (!app.namespace) {
     log({ type: "error", message: "Application namespace is undefined" });
@@ -111,6 +113,7 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
     "deployment.yaml": deploymentYaml,
     "service.yaml": serviceYaml,
     "ingress.yaml": ingressYaml,
+    "pvcs.yaml": pvcsYaml,
   };
 
   writeManifestFiles(appDir, manifests);
@@ -125,6 +128,11 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
         message: `[applyApplication] ${file} content:\n${content}`,
       });
     }
+  }
+
+  // Apply PVCs first if present
+  if (pvcsYaml) {
+    await exec(`kubectl apply -f pvcs.yaml`, { cwd: appDir });
   }
 
   await applyManifestSequence(appDir, app.name, manifestFiles, res);
