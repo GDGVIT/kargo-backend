@@ -67,7 +67,7 @@ const env = {
   CUSTOM_DOMAIN: process.env.CUSTOM_DOMAIN || "kargo.upayan.dev",
 
   // Ingress domains
-  INGRESS_BASE_DOMAIN: process.env.INGRESS_BASE_DOMAIN,
+  INGRESS_BASE_DOMAIN: process.env.INGRESS_BASE_DOMAIN || "vitians.in",
 
   // Directory for manifests
   MANIFESTS_DIR: process.env.MANIFESTS_DIR,

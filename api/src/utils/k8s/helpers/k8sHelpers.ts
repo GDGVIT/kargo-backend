@@ -17,7 +17,7 @@ export function getResourceName(type: string, appName: string) {
 }
 
 export const getBaseDomain = () => {
-  let domain = env.INGRESS_BASE_DOMAIN || ".vitians.in";
+  let domain = env.INGRESS_BASE_DOMAIN;
   if (domain.startsWith(".")) domain = domain.slice(1);
   return domain;
 };
