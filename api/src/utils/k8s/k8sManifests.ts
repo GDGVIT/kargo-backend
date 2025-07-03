@@ -1,12 +1,12 @@
 import type IApplication from "../../types/application.types";
-import generateDEployment from "./generators/yamls/generateDeployment";
-import generateService from "./generators/yamls/generateServiceYaml";
-import generateSecret from "./generators/yamls/generateSecret";
-import generateImagePullSecret from "./generators/yamls/generateImagePullSecret";
-import generatePVC from "./generators/yamls/generatePVC";
-import generatePV from "./generators/yamls/generatePV";
+import generateDEployment from "./generators/generateDeployment";
+import generateService from "./generators/generateService";
+import generateSecret from "./generators/generateSecret";
+import generateImagePullSecret from "./generators/generateImagePullSecret";
+import generatePVC from "./generators/generatePVC";
+import generatePV from "./generators/generatePV";
 import stripDates from "./helpers/stripDates";
-import generateIngress from "./generators/yamls/generateIngress";
+import generateIngress from "./generators/generateIngress";
 
 export default function generateK8sManifests(
   app: IApplication

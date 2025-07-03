@@ -1,5 +1,5 @@
-import IApplication from "../../../../types/application.types";
-import getEnvObject from "../../helpers/getEnvObject";
+import IApplication from "../../../types/application.types";
+import getEnvObject from "../helpers/getEnvObject";
 
 export default function generateSecret(
   sanitizedApp: IApplication,

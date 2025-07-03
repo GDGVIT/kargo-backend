@@ -1,4 +1,4 @@
-import env from "../../../../config/env";
+import env from "../../../config/env";
 import path from "path";
 
 export default function generatePV(
