@@ -1,3 +1,5 @@
+import env from "../../../config/env";
+
 export default function generateIngress(
   sanitizedApp: any,
   namespace: string
@@ -31,7 +33,17 @@ export default function generateIngress(
   const hosts = ingressPorts.map((p: any) =>
     p.subdomain.endsWith(".") ? p.subdomain.slice(0, -1) : p.subdomain
   );
-  return [
+
+  // For development, skip cert-manager and TLS
+  const isDev = env.NODE_ENV === "development";
+  const annotations = [
+    `    kubernetes.io/ingress.class: traefik`,
+    !isDev ? `    cert-manager.io/cluster-issuer: letsencrypt-wildcard` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const lines = [
     `---`,
     `apiVersion: networking.k8s.io/v1`,
     `kind: Ingress`,
@@ -42,14 +54,18 @@ export default function generateIngress(
     `    app: ${sanitizedApp.name}`,
     `    deployment: ${sanitizedApp.deploymentName}`,
     `  annotations:`,
-    `    kubernetes.io/ingress.class: traefik`,
-    `    cert-manager.io/cluster-issuer: letsencrypt-wildcard`,
+    annotations,
     `spec:`,
     `  rules:`,
     rules,
-    `  tls:`,
-    `    - hosts:`,
-    ...hosts.map((h: string) => `        - ${h}`),
-    `      secretName: wildcard-tls`,
-  ].join("\n");
+  ];
+
+  if (!isDev) {
+    lines.push(`  tls:`);
+    lines.push(`    - hosts:`);
+    hosts.forEach((h: string) => lines.push(`        - ${h}`));
+    lines.push(`      secretName: wildcard-tls`);
+  }
+
+  return lines.join("\n");
 }
