@@ -72,71 +72,76 @@ const deleteApplication = asyncHandler(async (req: Request, res: Response) => {
       }
     } else {
       // Delete individual resources in default namespace
+      // Delete deployment
       try {
         await runKubectl(
-          ["-n", namespace, "delete", "deployment", deployment],
-          `Deleting deployment: ${deployment}`
+          ["delete", "deployment", `${deployment}-deployment`, "-n", namespace],
+          `Deleting deployment: ${deployment}-deployment`
         );
       } catch (err: any) {
         streamStep(
           res,
-          err.message || `Failed to delete deployment: ${deployment}`,
+          err.message || `Failed to delete deployment`,
           "warning"
         );
       }
+      // Delete service
       try {
         await runKubectl(
-          ["-n", namespace, "delete", "service", service],
-          `Deleting service: ${service}`
+          ["delete", "service", `${service}-service`, "-n", namespace],
+          `Deleting service: ${service}-service`
         );
       } catch (err: any) {
-        streamStep(
-          res,
-          err.message || `Failed to delete service: ${service}`,
-          "warning"
-        );
+        streamStep(res, err.message || `Failed to delete service`, "warning");
       }
+      // Delete ingress
       try {
         await runKubectl(
-          ["-n", namespace, "delete", "ingress", `${name}-ingress`],
+          ["delete", "ingress", `${name}-ingress`, "-n", namespace],
           `Deleting ingress: ${name}-ingress`
         );
       } catch (err: any) {
-        streamStep(
-          res,
-          err.message || `Failed to delete ingress: ${name}-ingress`,
-          "warning"
-        );
+        streamStep(res, err.message || `Failed to delete ingress`, "warning");
       }
+      // Delete secret
       try {
         await runKubectl(
-          ["-n", namespace, "delete", "pvc", "--all"],
-          `Deleting all PVCs in namespace: ${namespace}`
+          ["delete", "secret", `${name}-env-secret`, "-n", namespace],
+          `Deleting secret: ${name}-env-secret`
+        );
+      } catch (err: any) {
+        streamStep(res, err.message || `Failed to delete secret`, "warning");
+      }
+      // Delete image pull secret
+      try {
+        await runKubectl(
+          ["delete", "secret", `${name}-regcred`, "-n", namespace],
+          `Deleting image pull secret: ${name}-regcred`
         );
       } catch (err: any) {
         streamStep(
           res,
-          err.message || `Failed to delete PVCs in namespace: ${namespace}`,
+          err.message || `Failed to delete image pull secret`,
           "warning"
         );
       }
+      // Delete PVCs and PVs (auto-generated volume)
+      const autoVolumeName = `${name}-data`;
       try {
         await runKubectl(
-          [
-            "-n",
-            namespace,
-            "delete",
-            "secret",
-            `$(kubectl get secrets -n ${namespace} -o name | grep ${name}-env-secret || true)`,
-          ],
-          `Deleting env secret for: ${name}`
+          ["delete", "pvc", `${autoVolumeName}-pvc`, "-n", namespace],
+          `Deleting PVC: ${autoVolumeName}-pvc`
         );
       } catch (err: any) {
-        streamStep(
-          res,
-          err.message || `Failed to delete env secret for: ${name}`,
-          "warning"
+        streamStep(res, err.message || `Failed to delete PVC`, "warning");
+      }
+      try {
+        await runKubectl(
+          ["delete", "pv", `${autoVolumeName}-pv`],
+          `Deleting PV: ${autoVolumeName}-pv`
         );
+      } catch (err: any) {
+        streamStep(res, err.message || `Failed to delete PV`, "warning");
       }
     }
   } catch (err: any) {
