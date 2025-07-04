@@ -68,17 +68,17 @@ export default function generateK8sManifests(
 
   // Compose output
   const manifests: Record<string, string> = {
-    deployment: deploymentYaml || "",
-    service: serviceYaml || "",
-    ingress: ingressYaml || "",
-    secret: secretYaml || "",
-    imagepullsecret: imagePullSecretYaml || "",
+    deployment: (deploymentYaml || "") + "\n",
+    service: (serviceYaml || "") + "\n",
+    ingress: (ingressYaml || "") + "\n",
+    secret: (secretYaml || "") + "\n",
+    imagepullsecret: (imagePullSecretYaml || "") + "\n",
   };
   if (pvManifests.length) {
-    manifests["pvs"] = pvManifests.join("\n---\n");
+    manifests["pvs"] = pvManifests.join("\n---\n") + "\n";
   }
   if (pvcManifests.length) {
-    manifests["pvcs"] = pvcManifests.join("\n---\n");
+    manifests["pvcs"] = pvcManifests.join("\n---\n") + "\n";
   }
   return manifests;
 }
