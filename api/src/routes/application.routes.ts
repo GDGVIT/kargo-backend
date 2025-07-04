@@ -14,6 +14,8 @@ import removeDeployment from "../controllers/application/removeDeployment.contro
 import removeNamespace from "../controllers/application/removeNamespace.controller";
 import streamApplicationLogs from "../controllers/application/streamApplicationLogs.controller";
 import getApplicationMetrics from "../controllers/application/getApplicationMetrics.controller";
+import scaleDeploymentZero from "../controllers/application/scaleDeploymentZero.controller";
+import rolloutRestartDeployment from "../controllers/application/rolloutRestartDeployment.controller";
 
 const router = Router();
 
@@ -34,6 +36,10 @@ router.delete("/:id", deleteApplication);
 router.post("/:id/apply", applyApplication);
 // Remove a deployment for an application
 router.post("/:id/remove-deployment", removeDeployment);
+// Scale deployment to 0 replicas
+router.post("/:id/scale-zero", scaleDeploymentZero);
+// Rollout restart deployment
+router.post("/:id/rollout-restart", rolloutRestartDeployment);
 // Remove a namespace for an application
 router.post("/:id/remove-namespace", removeNamespace);
 // Stream logs for an application
