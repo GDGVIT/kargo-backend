@@ -121,12 +121,16 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
   const manifests: Record<string, string | undefined> = {
     "namespace.yaml": `apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ${app.namespace}\n`,
     "secret.yaml": secretYaml,
-    "imagepullsecret.yaml": imagePullSecretYaml,
     "deployment.yaml": deploymentYaml,
     "service.yaml": serviceYaml,
     "ingress.yaml": ingressYaml,
     "pvcs.yaml": pvcsYaml,
   };
+
+  // Only add imagepullsecret if it exists
+  if (imagePullSecretYaml) {
+    manifests["imagepullsecret.yaml"] = imagePullSecretYaml;
+  }
 
   writeManifestFiles(appDir, manifests);
 

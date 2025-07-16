@@ -56,7 +56,7 @@ export default function generateK8sManifests(
   const imagePullSecretYaml =
     typeof generateImagePullSecret === "function"
       ? generateImagePullSecret(sanitizedApp, namespace)
-      : "";
+      : undefined;
 
   // Generate PV and PVC manifests for persistent volumes
   const pvManifests = volumes
@@ -72,8 +72,13 @@ export default function generateK8sManifests(
     service: (serviceYaml || "") + "\n",
     ingress: (ingressYaml || "") + "\n",
     secret: (secretYaml || "") + "\n",
-    imagepullsecret: (imagePullSecretYaml || "") + "\n",
   };
+
+  // Only add imagepullsecret if it exists
+  if (imagePullSecretYaml) {
+    manifests["imagepullsecret"] = imagePullSecretYaml + "\n";
+  }
+
   if (pvManifests.length) {
     manifests["pvs"] = pvManifests.join("\n---\n") + "\n";
   }
