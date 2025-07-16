@@ -42,19 +42,22 @@ const setUsername = async (req: Request, res: Response, next: NextFunction) => {
 
     const { username } = req.body;
 
-    if (!username || !isValidUsername(username)) {
+    // Normalize username to lowercase for Kubernetes compatibility
+    const normalizedUsername = username?.trim().toLowerCase();
+
+    if (!normalizedUsername || !isValidUsername(normalizedUsername)) {
       log({ type: "error", message: "Invalid username format." });
       return res
         .status(400)
         .json(
           formatNotification(
-            "Invalid username. Only letters, numbers, underscores, and hyphens are allowed. No spaces.",
+            "Invalid username. Only lowercase letters, numbers, and hyphens are allowed. Must start and end with a letter or number. Max 63 characters.",
             "error"
           )
         );
     }
 
-    const existing = await User.findOne({ username });
+    const existing = await User.findOne({ username: normalizedUsername });
     if (existing) {
       log({ type: "warning", message: "This username is already taken." });
       return res
@@ -67,7 +70,7 @@ const setUsername = async (req: Request, res: Response, next: NextFunction) => {
         );
     }
 
-    user.username = username;
+    user.username = normalizedUsername;
     await user.save();
 
     log({ type: "success", message: `Username set for user: ${user.email}` });

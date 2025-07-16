@@ -1,9 +1,14 @@
 function isValidUsername(username: string): boolean {
-  const usernameRegex = /^[A-Za-z0-9_-]+$/;
+  // Kubernetes-compatible username validation
+  // Must be lowercase alphanumeric with hyphens only
+  // Must start and end with alphanumeric character
+  // Maximum 63 characters (DNS label limit)
+  const usernameRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
   return (
     typeof username === "string" &&
     username.trim().length > 0 &&
-    usernameRegex.test(username)
+    username.trim().length <= 63 &&
+    usernameRegex.test(username.trim())
   );
 }
 
