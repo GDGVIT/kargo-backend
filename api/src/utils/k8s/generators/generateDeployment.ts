@@ -33,6 +33,7 @@ export default function generateDeployment(
     `        app: ${sanitizedApp.name}`,
     `        deployment: ${sanitizedApp.deploymentName || sanitizedApp.name}`,
     `    spec:`,
+    generateImagePullSecretsBlock(sanitizedApp),
     `      containers:`,
     `        - name: ${sanitizedApp.name}`,
     `          image: ${sanitizedApp.imageUrl}:${sanitizedApp.imageTag}`,
@@ -78,6 +79,17 @@ function generateEnvFromSecretBlock(sanitizedApp: IApplication): string {
   const envObj = getEnvObject(sanitizedApp.env);
   if (!envObj || Object.keys(envObj).length === 0) return "";
   return `          envFrom:\n            - secretRef:\n                name: ${sanitizedApp.name}-env-secret`;
+}
+
+function generateImagePullSecretsBlock(sanitizedApp: IApplication): string {
+  if (
+    !sanitizedApp.credentials ||
+    !Array.isArray(sanitizedApp.credentials) ||
+    sanitizedApp.credentials.length === 0
+  ) {
+    return "";
+  }
+  return `      imagePullSecrets:\n        - name: ${sanitizedApp.name}-regcred`;
 }
 
 function generatePortsBlock(ports: any[]): string {
