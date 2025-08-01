@@ -16,6 +16,7 @@ import streamApplicationLogs from "../controllers/application/streamApplicationL
 import getApplicationMetrics from "../controllers/application/getApplicationMetrics.controller";
 import scaleDeploymentZero from "../controllers/application/scaleDeploymentZero.controller";
 import rolloutRestartDeployment from "../controllers/application/rolloutRestartDeployment.controller";
+import testImageAvailabilityController from "../controllers/application/testImageAvailability.controller";
 
 const router = Router();
 
@@ -46,6 +47,8 @@ router.post("/:id/remove-namespace", removeNamespace);
 router.get("/:id/logs", streamApplicationLogs);
 // Get metrics for an application
 router.get("/:id/metrics", getApplicationMetrics);
+// Test Docker image availability
+router.post("/test-image", testImageAvailabilityController);
 // Run a Docker handler (async)
 router.post("/run-docker", asyncHandler(runDockerHandler));
 
