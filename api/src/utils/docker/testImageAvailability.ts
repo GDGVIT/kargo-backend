@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import axios, { AxiosError } from 'axios';
 import type { IRegistryCredential } from "../../types/user.types";
 import log from "../logging/logger";
 
@@ -9,6 +9,13 @@ interface ImageTestResult {
   authTested?: boolean;
   testedWith?: string;
   suggestions?: string[];
+}
+
+interface RegistryInfo { 
+  type: string;
+  registryUrl: string;
+  hostService: string;
+  tokenRealm: string;
 }
 
 /**
@@ -30,9 +37,11 @@ export default async function testImageAvailability(
     message: `Testing availability of Docker image: ${fullImageName}`,
   });
 
+  const registry = parseRegistryFromImage(imageUrl);
+  const name = normalizeImageName(imageUrl, registry);
+
   // First try without authentication (public image)
-  const publicResult = await testImagePull(fullImageName);
-  
+  const publicResult = await testImagePull(name, imageTag, registry);
   if (publicResult.available) {
     log({
       type: "success",
@@ -55,12 +64,7 @@ export default async function testImageAvailability(
       // Check if this credential is relevant for the image registry
       if (isCredentialRelevant(imageUrl, credential)) {
         testedCredentials++;
-        log({
-          type: "info",
-          message: `Testing with credential: ${credential.name} (${credential.registryType})`,
-        });
-
-        const authResult = await testImagePullWithAuth(fullImageName, credential);
+        const authResult = await testImagePullWithAuth(name, imageTag, registry, credential);
         
         if (authResult.available) {
           log({
@@ -91,7 +95,7 @@ export default async function testImageAvailability(
     };
   }
 
-  // No credentials provided or available, return the public test result
+  // No credentials provided or available, return suggestions
   const suggestions: string[] = [];
   
   // Determine registry type and suggest appropriate credentials
@@ -114,131 +118,134 @@ export default async function testImageAvailability(
 }
 
 /**
- * Test image pull without authentication
- */
-async function testImagePull(fullImageName: string): Promise<ImageTestResult> {
-  return new Promise((resolve) => {
-    // Use docker manifest inspect to test without actually pulling
-    const docker = spawn("docker", ["manifest", "inspect", fullImageName], {
-      stdio: ["pipe", "pipe", "pipe"]
-    });
-
-    let stderr = "";
-
-    docker.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    docker.on("close", (code) => {
-      if (code === 0) {
-        resolve({ available: true });
-      } else {
-        resolve({ 
-          available: false, 
-          error: stderr.trim() || `Docker manifest inspect failed with code ${code}`
-        });
-      }
-    });
-
-    // Set a timeout to prevent hanging
-    setTimeout(() => {
-      docker.kill();
-      resolve({ 
-        available: false, 
-        error: "Docker manifest inspect timed out"
-      });
-    }, 30000);
-  });
-}
-
-/**
  * Test image pull with authentication
  */
 async function testImagePullWithAuth(
-  fullImageName: string, 
+  repo: string,
+  tag: string,
+  registry: RegistryInfo,
   credential: IRegistryCredential
 ): Promise<ImageTestResult> {
-  return new Promise((resolve) => {
-    // Get registry server for login
-    const registryServer = getRegistryServer(credential);
+  try {
+    const url = `${registry.registryUrl}/v2/${repo}/manifests/${tag}`;
     
-    // First login to the registry
-    const loginDocker = spawn("docker", [
-      "login",
-      registryServer,
-      "-u", credential.username,
-      "--password-stdin"
-    ], {
-      stdio: ["pipe", "pipe", "pipe"]
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json',
+    };
+
+    const token = await getAuthToken(repo, registry, credential);
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    const res = await axios.get(url, {
+      headers,
+      timeout: 10000,
     });
+    if (res.status === 200) return { available: true };
+    return { available: false, error: `Unexpected HTTP ${res.status}` };
+  } catch (err) {
+    const e = err as AxiosError;
+    const errorData = e.response?.data as any;
+    const errorMsg = errorData?.errors?.[0]?.message || e.response?.statusText || e.message;
+    return { available: false, error: errorMsg };
+  }
+}
 
-    loginDocker.stdin.write(credential.token);
-    loginDocker.stdin.end();
+async function testImagePull(
+  repo: string,
+  tag: string,
+  registry: RegistryInfo
+): Promise<ImageTestResult> {
+  try {
+    const url = `${registry.registryUrl}/v2/${repo}/manifests/${tag}`;
+    
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json',
+    };
 
-    let loginStderr = "";
-
-    loginDocker.stderr.on("data", (data) => {
-      loginStderr += data.toString();
+    // Get an auth token most registries require this
+    const token = await getAuthToken(repo, registry);
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  
+    const res = await axios.get(url, {
+      headers,
+      timeout: 10000,
     });
+    if (res.status === 200) return { available: true };
+    return { available: false, error: `Unexpected HTTP ${res.status}` };
+  } catch (err) {
+    const e = err as AxiosError;
+    const errorData = e.response?.data as any;
+    const errorMsg = errorData?.errors?.[0]?.message || e.response?.statusText || e.message;
+    return { available: false, error: errorMsg };
+  }
+}
 
-    loginDocker.on("close", (loginCode) => {
-      if (loginCode !== 0) {
-        resolve({ 
-          available: false, 
-          error: `Docker login failed: ${loginStderr.trim()}`
-        });
-        return;
-      }
+async function getAuthToken(
+  repo: string,
+  registry: RegistryInfo,
+  credential?: IRegistryCredential
+): Promise<string | undefined> {
+  try {
+    const service = registry.hostService;
+    const realm = registry.tokenRealm;
+    const scope = `repository:${repo}:pull`;
+    const params = { service, scope };
+    const url = `${realm}?${new URLSearchParams(params).toString()}`;
+    
+    const opts: any = { timeout: 10000 };
+    if (credential) {
+      opts.auth = { username: credential.username, password: credential.token };
+    }
+    
+    const res = await axios.get(url, opts);
+    const token = res.data?.token;
 
-      // Now test the manifest with auth
-      const manifestDocker = spawn("docker", ["manifest", "inspect", fullImageName], {
-        stdio: ["pipe", "pipe", "pipe"]
-      });
+    if (!token) {
+      return undefined;
+    }
+    
+    return token;
+  } catch (err) {
+    const e = err as AxiosError;
+    const errorData = e.response?.data as any;
+    const errorMsg = errorData?.details || e.response?.statusText || e.message;
+    return undefined;
+  }
+}
 
-      let manifestStderr = "";
+function parseRegistryFromImage(imageUrl: string): RegistryInfo {
+  const lower = imageUrl.toLowerCase();
+  if (lower.includes('ghcr.io')) {
+    return { type: 'ghcr', registryUrl: 'https://ghcr.io', hostService: 'ghcr.io', tokenRealm: 'https://ghcr.io/token' };
+  }
+  if (lower.includes('registry.gitlab.com')) {
+    return { type: 'gitlab', registryUrl: 'https://registry.gitlab.com', hostService: 'container_registry', tokenRealm: 'https://gitlab.com/jwt/auth' };
+  }
+  if (lower.includes('docker.io') || lower.includes('index.docker.io') || !lower.includes('.')) {
+    return { type: 'dockerhub', registryUrl: 'https://registry-1.docker.io', hostService: 'registry.docker.io', tokenRealm: 'https://auth.docker.io/token' };
+  }
+  
+  const hostMatch = imageUrl.match(/^([^\/]+)/);
+  const host = hostMatch ? hostMatch[1] : imageUrl;
+  return { 
+    type: 'other', 
+    registryUrl: `https://${host}`, 
+    hostService: host, 
+    tokenRealm: `https://${host}/v2/token` 
+  };
+}
 
-      manifestDocker.stderr.on("data", (data) => {
-        manifestStderr += data.toString();
-      });
-
-      manifestDocker.on("close", (manifestCode) => {
-        // Logout regardless of result
-        spawn("docker", ["logout", registryServer], {
-          stdio: ["ignore", "ignore", "ignore"]
-        });
-
-        if (manifestCode === 0) {
-          resolve({ available: true });
-        } else {
-          resolve({ 
-            available: false, 
-            error: manifestStderr.trim() || `Docker manifest inspect failed with code ${manifestCode}`
-          });
-        }
-      });
-
-      // Set timeout for manifest check
-      setTimeout(() => {
-        manifestDocker.kill();
-        spawn("docker", ["logout", registryServer], {
-          stdio: ["ignore", "ignore", "ignore"]
-        });
-        resolve({ 
-          available: false, 
-          error: "Docker manifest inspect with auth timed out"
-        });
-      }, 30000);
-    });
-
-    // Set timeout for login
-    setTimeout(() => {
-      loginDocker.kill();
-      resolve({ 
-        available: false, 
-        error: "Docker login timed out"
-      });
-    }, 30000);
-  });
+function normalizeImageName(imageUrl: string, registry: RegistryInfo): string {
+  if (registry.type === 'dockerhub') {
+    if (!imageUrl.includes('/')) return `library/${imageUrl}`;
+    return imageUrl.replace(/^(docker\.io\/|index\.docker\.io\/)/, '');
+  }
+  const registryHostname = new URL(registry.registryUrl).hostname;
+  return imageUrl.replace(new RegExp(`^${registryHostname}/`), '');
 }
 
 /**
@@ -266,27 +273,5 @@ function isCredentialRelevant(imageUrl: string, credential: IRegistryCredential)
     
     default:
       return false;
-  }
-}
-
-/**
- * Get the registry server URL for docker login
- */
-function getRegistryServer(credential: IRegistryCredential): string {
-  switch (credential.registryType) {
-    case "dockerhub":
-      return "https://index.docker.io/v1/";
-    
-    case "github":
-      return "ghcr.io";
-    
-    case "gitlab":
-      return "registry.gitlab.com";
-    
-    case "other":
-      return credential.name || "";
-    
-    default:
-      return "";
   }
 }
