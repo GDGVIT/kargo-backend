@@ -34,6 +34,7 @@ export default function generateDeployment(
     `        deployment: ${sanitizedApp.deploymentName || sanitizedApp.name}`,
     `    spec:`,
     generateImagePullSecretsBlock(sanitizedApp),
+    generateNodeSelectorBlock(sanitizedApp),
     `      containers:`,
     `        - name: ${sanitizedApp.name}`,
     `          image: ${sanitizedApp.imageUrl}:${sanitizedApp.imageTag}`,
@@ -90,6 +91,20 @@ function generateImagePullSecretsBlock(sanitizedApp: IApplication): string {
     return "";
   }
   return `      imagePullSecrets:\n        - name: ${sanitizedApp.name}-regcred`;
+}
+
+function generateNodeSelectorBlock(sanitizedApp: any): string {
+  if (
+    !sanitizedApp.nodeSelector ||
+    Object.keys(sanitizedApp.nodeSelector).length === 0
+  ) {
+    return "";
+  }
+  
+  const yamlLines = Object.entries(sanitizedApp.nodeSelector).map(
+    ([key, value]) => `        ${key}: "${value}"`
+  );
+  return `      nodeSelector:\n${yamlLines.join('\n')}`;
 }
 
 function generatePortsBlock(ports: any[]): string {

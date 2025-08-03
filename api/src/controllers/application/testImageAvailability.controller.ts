@@ -55,6 +55,13 @@ const testImageAvailabilityController = asyncHandler(async (req: Request, res: R
         available: true,
         authTested: result.authTested,
         testedWith: result.testedWith,
+        suggestions: result.suggestions,
+        isArchitectureIssue: result.isArchitectureIssue,
+        architectureSupported: result.architectureSupported,
+        supportedArchitectures: result.supportedArchitectures,
+        clusterArchitectures: result.clusterArchitectures,
+        unsupportedNodes: result.unsupportedNodes,
+        recommendedNodeSelector: result.recommendedNodeSelector,
       });
     } else {
       log({
@@ -73,6 +80,7 @@ const testImageAvailabilityController = asyncHandler(async (req: Request, res: R
         needsAuth: result.needsAuth,
         authTested: result.authTested,
         error: result.error,
+        isArchitectureIssue: result.isArchitectureIssue,
         suggestions: result.suggestions,
       });
     }

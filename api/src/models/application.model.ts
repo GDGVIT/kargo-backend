@@ -84,7 +84,7 @@ const applicationSchema = new Schema<IApplication & Document>(
     args: [String],
     labels: { type: Map, of: String },
     annotations: { type: Map, of: String },
-    nodeSelector: { type: Map, of: String },
+    nodeSelector: { type: Object, default: {} },
     tolerations: [Schema.Types.Mixed],
     affinity: Schema.Types.Mixed,
   },

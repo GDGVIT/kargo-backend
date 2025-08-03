@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type { IRegistryCredential } from "../../types/user.types";
 import log from "../logging/logger";
+import { getClusterArchitectures, validateArchitectureCompatibility, getImageArchitectures } from './architectureValidation';
 
 interface ImageTestResult {
   available: boolean;
@@ -9,13 +10,98 @@ interface ImageTestResult {
   authTested?: boolean;
   testedWith?: string;
   suggestions?: string[];
+  isArchitectureIssue?: boolean;
+  architectureSupported?: boolean;
+  supportedArchitectures?: string[];
+  clusterArchitectures?: string[];
+  unsupportedNodes?: string[];
+  recommendedNodeSelector?: { [key: string]: string };
 }
+
+export type { ImageTestResult };
 
 interface RegistryInfo { 
   type: string;
   registryUrl: string;
   hostService: string;
   tokenRealm: string;
+}
+
+/**
+ * Validate image architecture against cluster
+ */
+async function validateImageArchitecture(manifestData: any): Promise<Partial<ImageTestResult>> {
+  const imageArchs = getImageArchitectures(manifestData);
+  
+  log({
+    type: "info",
+    message: `Found image architectures: ${imageArchs.join(', ') || 'none detected'}`,
+  });
+  
+  const clusterResult = await getClusterArchitectures();
+  
+  if (clusterResult.error) {
+    log({
+      type: "warning",
+      message: `Architecture validation skipped: ${clusterResult.error}`,
+    });
+    return {
+      available: false,
+      error: "Cannot validate image architecture compatibility - cluster access required for deployment.",
+      isArchitectureIssue: true,
+      suggestions: ["Architecture validation skipped: kubectl not available in this environment."]
+    };
+  }
+  
+  if (imageArchs.length === 0) {
+    log({
+      type: "warning",
+      message: "Could not determine image architecture from manifest",
+    });
+    return {
+      available: false,
+      error: "Cannot determine image architecture - deployment blocked for safety.",
+      isArchitectureIssue: true,
+      suggestions: ["Could not determine image architecture from manifest."]
+    };
+  }
+  
+  log({
+    type: "info",
+    message: `Found cluster architectures: ${clusterResult.nodeArchitectures.join(', ')}`,
+  });
+  
+  const validation = validateArchitectureCompatibility(
+    imageArchs, 
+    clusterResult.nodeArchitectures, 
+    clusterResult.nodeDetails
+  );
+  
+  const suggestions = [...validation.suggestions];
+  
+  if (!validation.isSupported) {
+    suggestions.push("Image architecture is not compatible with any cluster nodes.");
+    return {
+      available: false,
+      error: "Image cannot run on any cluster nodes - deployment blocked.",
+      isArchitectureIssue: true,
+      suggestions
+    };
+  }
+  
+  log({
+    type: "success",
+    message: `Architecture validation: compatible - ${suggestions.length} suggestions`,
+  });
+
+  return {
+    architectureSupported: validation.isSupported,
+    supportedArchitectures: imageArchs,
+    clusterArchitectures: clusterResult.nodeArchitectures,
+    unsupportedNodes: validation.unsupportedNodes,
+    recommendedNodeSelector: validation.recommendedNodeSelector,
+    suggestions
+  };
 }
 
 /**
@@ -47,7 +133,13 @@ export default async function testImageAvailability(
       type: "success",
       message: `Image ${fullImageName} is publicly available`,
     });
-    return { available: true };
+    
+    const architectureResult = await validateImageArchitecture(publicResult.manifestData);
+    
+    return { 
+      available: true,
+      ...architectureResult
+    };
   }
 
   // If public pull failed and we have credentials, try with authentication
@@ -71,10 +163,14 @@ export default async function testImageAvailability(
             type: "success",
             message: `Image ${fullImageName} is available with authentication`,
           });
+          
+          const architectureResult = await validateImageArchitecture(authResult.manifestData);
+          
           return { 
             available: true, 
             authTested: true, 
-            testedWith: `${credential.name} (${credential.registryType})`
+            testedWith: `${credential.name} (${credential.registryType})`,
+            ...architectureResult
           };
         } else {
           suggestions.push(`Failed with ${credential.name} (${credential.registryType}): ${authResult.error}`);
@@ -125,7 +221,7 @@ async function testImagePullWithAuth(
   tag: string,
   registry: RegistryInfo,
   credential: IRegistryCredential
-): Promise<ImageTestResult> {
+): Promise<ImageTestResult & { manifestData?: any }> {
   try {
     const url = `${registry.registryUrl}/v2/${repo}/manifests/${tag}`;
     
@@ -142,7 +238,9 @@ async function testImagePullWithAuth(
       headers,
       timeout: 10000,
     });
-    if (res.status === 200) return { available: true };
+    if (res.status === 200) {
+      return { available: true, manifestData: res.data };
+    }
     return { available: false, error: `Unexpected HTTP ${res.status}` };
   } catch (err) {
     const e = err as AxiosError;
@@ -156,7 +254,7 @@ async function testImagePull(
   repo: string,
   tag: string,
   registry: RegistryInfo
-): Promise<ImageTestResult> {
+): Promise<ImageTestResult & { manifestData?: any }> {
   try {
     const url = `${registry.registryUrl}/v2/${repo}/manifests/${tag}`;
     
@@ -174,7 +272,9 @@ async function testImagePull(
       headers,
       timeout: 10000,
     });
-    if (res.status === 200) return { available: true };
+    if (res.status === 200) {
+      return { available: true, manifestData: res.data };
+    }
     return { available: false, error: `Unexpected HTTP ${res.status}` };
   } catch (err) {
     const e = err as AxiosError;
