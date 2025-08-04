@@ -14,6 +14,7 @@ import removeDeployment from "../controllers/application/removeDeployment.contro
 import removeNamespace from "../controllers/application/removeNamespace.controller";
 import streamApplicationLogs from "../controllers/application/streamApplicationLogs.controller";
 import getApplicationMetrics from "../controllers/application/getApplicationMetrics.controller";
+import getApplicationsStatus from "../controllers/application/getApplicationsStatus.controller";
 import scaleDeploymentZero from "../controllers/application/scaleDeploymentZero.controller";
 import rolloutRestartDeployment from "../controllers/application/rolloutRestartDeployment.controller";
 import testImageAvailabilityController from "../controllers/application/testImageAvailability.controller";
@@ -51,5 +52,8 @@ router.get("/:id/metrics", getApplicationMetrics);
 router.post("/test-image", testImageAvailabilityController);
 // Run a Docker handler (async)
 router.post("/run-docker", asyncHandler(runDockerHandler));
+
+// Get live status for all applications
+router.get("/status", getApplicationsStatus);
 
 export default router;
