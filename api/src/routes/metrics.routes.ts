@@ -11,7 +11,19 @@ const prometheusBaseUrl =
 
 const router = Router();
 
-// This endpoint fetches overall cluster metrics from Prometheus
+router.get("/apiuptime", ensureAuthenticated, (req: Request, res: Response) => {
+  const uptime = Math.round(process.uptime());
+  const now = Math.floor(Date.now() / 1000);
+  const history = Array.from({ length: 60 }, (_, i) => {
+    const ts = now - (59 - i) * 60;
+    const up = Math.max(uptime - (59 - i) * 60, 0);
+    return [ts, up];
+  });
+  res.json({ uptime, history });
+});
+
+
+
 router.get("/overall", ensureAuthenticated, getOverallMetrics);
 
 export default router;
