@@ -1,5 +1,5 @@
 // Application routes for managing user applications, deployments, logs, and metrics
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import ensureAuthenticated from "../utils/auth/ensureAuthenticated";
 import asyncHandler from "../utils/handlers/asyncHandler";
 
@@ -19,6 +19,16 @@ import scaleDeploymentZero from "../controllers/application/scaleDeploymentZero.
 import rolloutRestartDeployment from "../controllers/application/rolloutRestartDeployment.controller";
 import testImageAvailabilityController from "../controllers/application/testImageAvailability.controller";
 
+const validateObjectId = (req: Request, res: Response, next: NextFunction) => {
+  const id = req.params.id;
+
+  if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+    res.status(400).json({ message: "Invalid application ID format" });
+    return;
+  }
+  next();
+};
+
 const router = Router();
 
 // All routes require authentication
@@ -28,32 +38,31 @@ router.use(ensureAuthenticated);
 router.post("/", createApplication);
 // Get all applications for the user
 router.get("/", getApplications);
-// Get a specific application by ID
-router.get("/:id", getApplication);
+// Get live status for all applications - must be before /:id route
+router.get("/status", getApplicationsStatus);
+// Get a specific application by ID (with ObjectId validation)
+router.get("/:id", validateObjectId, getApplication);
 // Update an application by ID
-router.put("/:id", updateApplication);
+router.put("/:id", validateObjectId, updateApplication);
 // Delete an application by ID
-router.delete("/:id", deleteApplication);
+router.delete("/:id", validateObjectId, deleteApplication);
 // Apply (deploy) an application
-router.post("/:id/apply", applyApplication);
+router.post("/:id/apply", validateObjectId, applyApplication);
 // Remove a deployment for an application
-router.post("/:id/remove-deployment", removeDeployment);
+router.post("/:id/remove-deployment", validateObjectId, removeDeployment);
 // Scale deployment to 0 replicas
-router.post("/:id/scale-zero", scaleDeploymentZero);
+router.post("/:id/scale-zero", validateObjectId, scaleDeploymentZero);
 // Rollout restart deployment
-router.post("/:id/rollout-restart", rolloutRestartDeployment);
+router.post("/:id/rollout-restart", validateObjectId, rolloutRestartDeployment);
 // Remove a namespace for an application
-router.post("/:id/remove-namespace", removeNamespace);
+router.post("/:id/remove-namespace", validateObjectId, removeNamespace);
 // Stream logs for an application
-router.get("/:id/logs", streamApplicationLogs);
+router.get("/:id/logs", validateObjectId, streamApplicationLogs);
 // Get metrics for an application
-router.get("/:id/metrics", getApplicationMetrics);
+router.get("/:id/metrics", validateObjectId, getApplicationMetrics);
 // Test Docker image availability
 router.post("/test-image", testImageAvailabilityController);
 // Run a Docker handler (async)
 router.post("/run-docker", asyncHandler(runDockerHandler));
-
-// Get live status for all applications
-router.get("/status", getApplicationsStatus);
 
 export default router;
