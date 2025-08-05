@@ -516,12 +516,25 @@ export class KubernetesClient {
     try {
       // Try to get existing namespace
       await this.coreV1Api!.readNamespace({ name });
-      // If it exists, patch it
-      await this.coreV1Api!.patchNamespace({ name, body: resource });
+      // If it exists, we don't need to update it - namespaces are typically static
+      log({
+        type: 'info',
+        message: `Namespace ${name} already exists - skipping update`
+      });
     } catch (error: any) {
-      if (error.response?.statusCode === 404) {
+      // Check for 404 error indicating namespace doesn't exist
+      if (error.code === 404 || error.response?.statusCode === 404 || 
+          (error.body && error.body.includes('not found'))) {
         // Namespace doesn't exist, create it
-        await this.coreV1Api!.createNamespace({ body: resource });
+        try {
+          await this.coreV1Api!.createNamespace({ body: resource });
+          log({
+            type: 'success',
+            message: `Namespace ${name} created successfully`
+          });
+        } catch (createError: any) {
+          throw new Error(`Failed to create namespace ${name}: ${createError.message || createError}`);
+        }
       } else {
         throw error;
       }
@@ -536,9 +549,11 @@ export class KubernetesClient {
 
     try {
       await this.appsV1Api!.readNamespacedDeployment({ name, namespace: ns });
-      await this.appsV1Api!.patchNamespacedDeployment({ name, namespace: ns, body: resource });
+      // If it exists, replace it (more reliable than patching)
+      await this.appsV1Api!.replaceNamespacedDeployment({ name, namespace: ns, body: resource });
     } catch (error: any) {
-      if (error.response?.statusCode === 404) {
+      if (error.code === 404 || error.response?.statusCode === 404 || 
+          (error.body && error.body.includes('not found'))) {
         await this.appsV1Api!.createNamespacedDeployment({ namespace: ns, body: resource });
       } else {
         throw error;
@@ -554,9 +569,11 @@ export class KubernetesClient {
 
     try {
       await this.coreV1Api!.readNamespacedService({ name, namespace: ns });
-      await this.coreV1Api!.patchNamespacedService({ name, namespace: ns, body: resource });
+      // If it exists, replace it (more reliable than patching)
+      await this.coreV1Api!.replaceNamespacedService({ name, namespace: ns, body: resource });
     } catch (error: any) {
-      if (error.response?.statusCode === 404) {
+      if (error.code === 404 || error.response?.statusCode === 404 || 
+          (error.body && error.body.includes('not found'))) {
         await this.coreV1Api!.createNamespacedService({ namespace: ns, body: resource });
       } else {
         throw error;
@@ -572,9 +589,11 @@ export class KubernetesClient {
 
     try {
       await this.coreV1Api!.readNamespacedSecret({ name, namespace: ns });
-      await this.coreV1Api!.patchNamespacedSecret({ name, namespace: ns, body: resource });
+      // If it exists, replace it (more reliable than patching)
+      await this.coreV1Api!.replaceNamespacedSecret({ name, namespace: ns, body: resource });
     } catch (error: any) {
-      if (error.response?.statusCode === 404) {
+      if (error.code === 404 || error.response?.statusCode === 404 || 
+          (error.body && error.body.includes('not found'))) {
         await this.coreV1Api!.createNamespacedSecret({ namespace: ns, body: resource });
       } else {
         throw error;
@@ -588,9 +607,11 @@ export class KubernetesClient {
 
     try {
       await this.coreV1Api!.readPersistentVolume({ name });
-      await this.coreV1Api!.patchPersistentVolume({ name, body: resource });
+      // If it exists, replace it (more reliable than patching)
+      await this.coreV1Api!.replacePersistentVolume({ name, body: resource });
     } catch (error: any) {
-      if (error.response?.statusCode === 404) {
+      if (error.code === 404 || error.response?.statusCode === 404 || 
+          (error.body && error.body.includes('not found'))) {
         await this.coreV1Api!.createPersistentVolume({ body: resource });
       } else {
         throw error;
@@ -606,9 +627,11 @@ export class KubernetesClient {
 
     try {
       await this.coreV1Api!.readNamespacedPersistentVolumeClaim({ name, namespace: ns });
-      await this.coreV1Api!.patchNamespacedPersistentVolumeClaim({ name, namespace: ns, body: resource });
+      // If it exists, replace it (more reliable than patching)
+      await this.coreV1Api!.replaceNamespacedPersistentVolumeClaim({ name, namespace: ns, body: resource });
     } catch (error: any) {
-      if (error.response?.statusCode === 404) {
+      if (error.code === 404 || error.response?.statusCode === 404 || 
+          (error.body && error.body.includes('not found'))) {
         await this.coreV1Api!.createNamespacedPersistentVolumeClaim({ namespace: ns, body: resource });
       } else {
         throw error;
@@ -633,7 +656,8 @@ export class KubernetesClient {
           plural, 
           name 
         });
-        await this.customObjectsApi!.patchNamespacedCustomObject({ 
+        // If it exists, replace it (more reliable than patching)
+        await this.customObjectsApi!.replaceNamespacedCustomObject({ 
           group, 
           version, 
           namespace: ns, 
@@ -642,7 +666,8 @@ export class KubernetesClient {
           body: resource 
         });
       } catch (error: any) {
-        if (error.response?.statusCode === 404) {
+        if (error.code === 404 || error.response?.statusCode === 404 || 
+            (error.body && error.body.includes('not found'))) {
           await this.customObjectsApi!.createNamespacedCustomObject({ 
             group, 
             version, 
@@ -663,7 +688,8 @@ export class KubernetesClient {
           plural, 
           name 
         });
-        await this.customObjectsApi!.patchClusterCustomObject({ 
+        // If it exists, replace it (more reliable than patching)
+        await this.customObjectsApi!.replaceClusterCustomObject({ 
           group, 
           version, 
           plural, 
@@ -671,7 +697,8 @@ export class KubernetesClient {
           body: resource 
         });
       } catch (error: any) {
-        if (error.response?.statusCode === 404) {
+        if (error.code === 404 || error.response?.statusCode === 404 || 
+            (error.body && error.body.includes('not found'))) {
           await this.customObjectsApi!.createClusterCustomObject({ 
             group, 
             version, 
