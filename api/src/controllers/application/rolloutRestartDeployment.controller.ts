@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import Application from "../../models/application.model";
 import asyncHandler from "../../utils/handlers/asyncHandler";
 import log, { formatNotification } from "../../utils/logging/logger";
-import { exec } from "child_process";
+import k8sClient from "../../utils/k8s/client";
 
 const rolloutRestartDeployment = asyncHandler(
   async (req: Request, res: Response) => {
@@ -13,32 +13,34 @@ const rolloutRestartDeployment = asyncHandler(
         .status(404)
         .json(formatNotification("Application not found", "error"));
     }
+    
     const namespace = app.namespace || "default";
     const deploymentName = app.deploymentName || app.name;
-    exec(
-      `kubectl rollout restart deployment/${deploymentName}-deployment -n ${namespace}`,
-      (err, stdout, stderr) => {
-        if (err) {
-          log({
-            type: "error",
-            message: "Failed to rollout restart deployment",
-            meta: err,
-          });
-          return res.status(500).json({
-            ...formatNotification("Failed to restart deployment", "error"),
-            error: stderr,
-          });
-        }
-        log({
-          type: "success",
-          message: `Deployment rollout restarted for app: ${app.name}`,
-        });
-        res.json({
-          ...formatNotification("Deployment rollout restarted", "success"),
-          output: stdout,
-        });
-      }
-    );
+    
+    try {
+      // Use secure Kubernetes client instead of direct kubectl command
+      const result = await k8sClient.restartDeployment(`${deploymentName}-deployment`, namespace);
+      
+      log({
+        type: "success",
+        message: `Deployment rollout restarted for app: ${app.name}`,
+      });
+      res.json({
+        ...formatNotification("Deployment rollout restarted", "success"),
+        output: result.message,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      log({
+        type: "error",
+        message: "Failed to rollout restart deployment",
+        meta: error,
+      });
+      return res.status(500).json({
+        ...formatNotification("Failed to restart deployment", "error"),
+        error: errorMessage,
+      });
+    }
   }
 );
 

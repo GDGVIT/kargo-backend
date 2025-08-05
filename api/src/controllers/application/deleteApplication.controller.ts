@@ -2,10 +2,10 @@ import { Request, Response } from "express";
 import Application from "../../models/application.model";
 import asyncHandler from "../../utils/handlers/asyncHandler";
 import log, { formatNotification } from "../../utils/logging/logger";
-import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import env from "../../config/env";
+import k8sClient from "../../utils/k8s/client";
 
 // Helper to stream progress
 function streamStep(
@@ -36,22 +36,21 @@ const deleteApplication = asyncHandler(async (req: Request, res: Response) => {
   const manifestsDir = env.MANIFESTS_DIR;
   const appDir = manifestsDir ? path.join(manifestsDir, userId, appId) : null;
 
-  // Helper to run a kubectl command and stream output
-  function runKubectl(args: string[], stepMsg: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+  // Helper to safely delete a Kubernetes resource using SDK
+  async function deleteK8sResource(
+    deleteFunction: () => Promise<any>,
+    resourceName: string,
+    stepMsg: string
+  ): Promise<void> {
+    try {
       streamStep(res, stepMsg);
-      const proc = spawn("kubectl", args);
-      proc.stdout.on("data", (data) => {
-        streamStep(res, data.toString().trim());
-      });
-      proc.stderr.on("data", (data) => {
-        streamStep(res, data.toString().trim(), "warning");
-      });
-      proc.on("close", (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`${stepMsg} failed with code ${code}`));
-      });
-    });
+      await deleteFunction();
+      streamStep(res, `Successfully deleted ${resourceName}`);
+    } catch (error: any) {
+      // Log warning but don't fail - resource might not exist
+      const message = error.message || `Failed to delete ${resourceName}`;
+      streamStep(res, message, "warning");
+    }
   }
 
   let errorOccurred = false;
@@ -59,90 +58,67 @@ const deleteApplication = asyncHandler(async (req: Request, res: Response) => {
 
   try {
     if (namespace !== "default") {
-      // Delete namespace (removes all resources inside)
+      // Delete namespace (removes all resources inside) - SECURE SDK
       try {
-        await runKubectl(
-          ["delete", "namespace", namespace],
-          `Deleting namespace: ${namespace}`
-        );
+        streamStep(res, `Deleting namespace: ${namespace}`);
+        const result = await k8sClient.deleteNamespace(namespace);
+        streamStep(res, result.message);
       } catch (err: any) {
         errorOccurred = true;
         errorMsg = err.message || `Failed to delete namespace: ${namespace}`;
         streamStep(res, errorMsg, "error");
       }
     } else {
-      // Delete individual resources in default namespace
+      // Delete individual resources in default namespace using SECURE SDK
+      
       // Delete deployment
-      try {
-        await runKubectl(
-          ["delete", "deployment", `${deployment}-deployment`, "-n", namespace],
-          `Deleting deployment: ${deployment}-deployment`
-        );
-      } catch (err: any) {
-        streamStep(
-          res,
-          err.message || `Failed to delete deployment`,
-          "warning"
-        );
-      }
+      await deleteK8sResource(
+        () => k8sClient.deleteResourceByNameAndKind(`${deployment}-deployment`, 'Deployment', namespace),
+        'deployment',
+        `Deleting deployment: ${deployment}-deployment`
+      );
+      
       // Delete service
-      try {
-        await runKubectl(
-          ["delete", "service", `${service}-service`, "-n", namespace],
-          `Deleting service: ${service}-service`
-        );
-      } catch (err: any) {
-        streamStep(res, err.message || `Failed to delete service`, "warning");
-      }
+      await deleteK8sResource(
+        () => k8sClient.deleteResourceByNameAndKind(`${service}-service`, 'Service', namespace),
+        'service',
+        `Deleting service: ${service}-service`
+      );
+      
       // Delete ingress
-      try {
-        await runKubectl(
-          ["delete", "ingress", `${name}-ingress`, "-n", namespace],
-          `Deleting ingress: ${name}-ingress`
-        );
-      } catch (err: any) {
-        streamStep(res, err.message || `Failed to delete ingress`, "warning");
-      }
+      await deleteK8sResource(
+        () => k8sClient.deleteResourceByNameAndKind(`${name}-ingress`, 'Ingress', namespace),
+        'ingress',
+        `Deleting ingress: ${name}-ingress`
+      );
+      
       // Delete secret
-      try {
-        await runKubectl(
-          ["delete", "secret", `${name}-env-secret`, "-n", namespace],
-          `Deleting secret: ${name}-env-secret`
-        );
-      } catch (err: any) {
-        streamStep(res, err.message || `Failed to delete secret`, "warning");
-      }
+      await deleteK8sResource(
+        () => k8sClient.deleteResourceByNameAndKind(`${name}-env-secret`, 'Secret', namespace),
+        'secret',
+        `Deleting secret: ${name}-env-secret`
+      );
+      
       // Delete image pull secret
-      try {
-        await runKubectl(
-          ["delete", "secret", `${name}-regcred`, "-n", namespace],
-          `Deleting image pull secret: ${name}-regcred`
-        );
-      } catch (err: any) {
-        streamStep(
-          res,
-          err.message || `Failed to delete image pull secret`,
-          "warning"
-        );
-      }
+      await deleteK8sResource(
+        () => k8sClient.deleteResourceByNameAndKind(`${name}-regcred`, 'Secret', namespace),
+        'image pull secret',
+        `Deleting image pull secret: ${name}-regcred`
+      );
+      
       // Delete PVCs and PVs (auto-generated volume)
       const autoVolumeName = `${name}-data`;
-      try {
-        await runKubectl(
-          ["delete", "pvc", `${autoVolumeName}-pvc`, "-n", namespace],
-          `Deleting PVC: ${autoVolumeName}-pvc`
-        );
-      } catch (err: any) {
-        streamStep(res, err.message || `Failed to delete PVC`, "warning");
-      }
-      try {
-        await runKubectl(
-          ["delete", "pv", `${autoVolumeName}-pv`],
-          `Deleting PV: ${autoVolumeName}-pv`
-        );
-      } catch (err: any) {
-        streamStep(res, err.message || `Failed to delete PV`, "warning");
-      }
+      await deleteK8sResource(
+        () => k8sClient.deleteResourceByNameAndKind(`${autoVolumeName}-pvc`, 'PersistentVolumeClaim', namespace),
+        'PVC',
+        `Deleting PVC: ${autoVolumeName}-pvc`
+      );
+      
+      await deleteK8sResource(
+        () => k8sClient.deleteResourceByNameAndKind(`${autoVolumeName}-pv`, 'PersistentVolume'),
+        'PV',
+        `Deleting PV: ${autoVolumeName}-pv`
+      );
     }
   } catch (err: any) {
     errorOccurred = true;
