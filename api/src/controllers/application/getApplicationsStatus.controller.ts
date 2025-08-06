@@ -6,7 +6,7 @@ import { exec } from "child_process";
 function getK8sStatus(namespace: string, deployment: string): Promise<string> {
   return new Promise((resolve) => {
     exec(
-      `kubectl get deployment ${deployment} -n ${namespace} -o json`,
+      `kubectl get deployment ${deployment}-deployment -n ${namespace} -o json`,
       (err, stdout) => {
         if (err) return resolve("offline");
         try {
