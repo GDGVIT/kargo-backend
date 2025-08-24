@@ -1,7 +1,4 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import k8sClient from '../k8s/client';
 
 export interface NodeArchitectureInfo {
   name: string;
@@ -23,36 +20,20 @@ export interface ArchitectureValidationResult {
 }
 
 /**
- * Get architectures of all nodes in the cluster
+ * Get architectures of all nodes in the cluster (SECURE - uses Kubernetes SDK)
  */
 export async function getClusterArchitectures(): Promise<ClusterArchitectureResult> {
   try {
-    const { stdout } = await execAsync(
-      'kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}:{.status.nodeInfo.architecture}{\'\\n\'}{end}"',
-      { timeout: 10000 }
-    );
-    
-    const nodeDetails: NodeArchitectureInfo[] = stdout
-      .trim()
-      .split('\n')
-      .filter(line => line.trim())
-      .map(line => {
-        const [name, arch] = line.split(':');
-        return { 
-          name: name?.trim() || 'unknown', 
-          arch: arch?.trim() || 'unknown' 
-        };
-      })
-      .filter(node => node.name !== 'unknown' && node.arch !== 'unknown');
-    
-    const nodeArchitectures = [...new Set(nodeDetails.map(node => node.arch))];
+    // Use secure Kubernetes client instead of kubectl command
+    const { nodeArchitectures, nodeDetails } = await k8sClient.getNodeArchitectures();
     
     return { nodeArchitectures, nodeDetails };
   } catch (error) {
+    console.error('Error getting cluster architectures:', error);
     return { 
       nodeArchitectures: [], 
       nodeDetails: [], 
-      error: `Failed to get cluster node architectures: ${error}` 
+      error: error instanceof Error ? error.message : 'Unknown error' 
     };
   }
 }
