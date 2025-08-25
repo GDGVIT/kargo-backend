@@ -15,30 +15,38 @@
 
 
 ## Features
-- [ ]  < feature >
-- [ ]  < feature >
-- [ ]  < feature >
-- [ ]  < feature >
+- [x]  AI-Powered Docker Configuration - Automatic Dockerfile and Docker Compose generation
+- [x]  Kubernetes Native Integration - Secure cluster management and deployment
+- [x]  Multi-Provider Authentication - Google OAuth, GitHub OAuth, and local authentication
+- [x]  Real-time Application Monitoring - Live status tracking and metrics collection
 
 <br>
 
 ## Dependencies
- - < dependency >
- - < dependency >
+ - Node.js 20 or higher with TypeScript 5.x
+ - MongoDB for database storage
+ - Python 3.8+ for AI features (LangChain, Groq)
+ - Kubernetes cluster access for deployment
 
 
 ## Running
 
 
-< directions to install > 
+Clone the repository and install dependencies
 ```bash
-< insert code >
+git clone https://github.com/GDGVIT/kargo-backend.git
+cd kargo-backend
+npm install
+cd api && npm install
+pip install -r AI/requirements.txt
 ```
 
-< directions to execute >
+Configure environment and start the development server
 
 ```bash
-< insert code >
+cp example.env .env
+# Edit .env with your configuration
+npm run dev
 ```
 
 ## Contributors
