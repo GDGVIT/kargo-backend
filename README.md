@@ -64,6 +64,19 @@ npm run dev
 			</p>
 		</td>
 		<td>
+			Swayam
+			<p align="center">
+			  <img src = "https://avatars.githubusercontent.com/u/157891924" width="150" height="150" alt="Swayam">
+			</p>
+				<a href = "https://github.com/swayam5342">
+					<img src = "http://www.iconninja.com/files/241/825/211/round-collaboration-social-github-code-circle-network-icon.svg" width="36" height = "36" alt="GitHub"/>
+				</a>
+				<a href = "https://www.linkedin.com/in/swayam-prakash-2909222b4/">
+					<img src = "http://www.iconninja.com/files/863/607/751/network-linkedin-social-connection-circular-circle-media-icon.svg" width="36" height="36" alt="LinkedIn"/>
+        </a>
+  		</p>
+		</td>
+		<td>
 		Aayush Kumar
 		<p align="center">
 			<img src="https://avatars.githubusercontent.com/u/69899544?s=400&u=7ca456e256c5a687a9cf3ec8b936c0643767fc03&v=4" width="150" height="150" alt="Aayush Kumar">
