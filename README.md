@@ -7,38 +7,42 @@
 </p>
 
 ---
-[![Join Us](https://img.shields.io/badge/Join%20Us-Developer%20Student%20Clubs-red)](https://dsc.community.dev/vellore-institute-of-technology/)
-[![Discord Chat](https://img.shields.io/discord/760928671698649098.svg)](https://discord.gg/498KVdSKWR)
-
-[![DOCS](https://img.shields.io/badge/Documentation-see%20docs-green?style=flat-square&logo=appveyor)](INSERT_LINK_FOR_DOCS_HERE) 
-  [![UI ](https://img.shields.io/badge/User%20Interface-Link%20to%20UI-orange?style=flat-square&logo=appveyor)](INSERT_UI_LINK_HERE)
+[![UI ](https://img.shields.io/badge/User%20Interface-Link%20to%20UI-orange?style=flat-square&logo=appveyor)](INSERT_UI_LINK_HERE)
 
 
 ## Features
-- [ ]  < feature >
-- [ ]  < feature >
-- [ ]  < feature >
-- [ ]  < feature >
+- [x]  AI-Powered Docker Configuration - Automatic Dockerfile and Docker Compose generation
+- [x]  Kubernetes Native Integration - Secure cluster management and deployment
+- [x]  Multi-Provider Authentication - Google OAuth, GitHub OAuth, and local authentication
+- [x]  Real-time Application Monitoring - Live status tracking and metrics collection
 
 <br>
 
 ## Dependencies
- - < dependency >
- - < dependency >
+ - Node.js 20 or higher with TypeScript 5.x
+ - MongoDB for database storage
+ - Python 3.8+ for AI features (LangChain, Groq)
+ - Kubernetes cluster access for deployment
 
 
 ## Running
 
 
-< directions to install > 
+Clone the repository and install dependencies
 ```bash
-< insert code >
+git clone https://github.com/GDGVIT/kargo-backend.git
+cd kargo-backend
+npm install
+cd api && npm install
+pip install -r AI/requirements.txt
 ```
 
-< directions to execute >
+Configure environment and start the development server
 
 ```bash
-< insert code >
+cp example.env .env
+# Edit .env with your configuration
+npm run dev
 ```
 
 ## Contributors
@@ -58,6 +62,19 @@
 					<img src = "http://www.iconninja.com/files/863/607/751/network-linkedin-social-connection-circular-circle-media-icon.svg" width="36" height="36" alt="LinkedIn"/>
 				</a>
 			</p>
+		</td>
+		<td>
+			Swayam
+			<p align="center">
+			  <img src = "https://avatars.githubusercontent.com/u/157891924" width="150" height="150" alt="Swayam">
+			</p>
+				<a href = "https://github.com/swayam5342">
+					<img src = "http://www.iconninja.com/files/241/825/211/round-collaboration-social-github-code-circle-network-icon.svg" width="36" height = "36" alt="GitHub"/>
+				</a>
+				<a href = "https://www.linkedin.com/in/swayam-prakash-2909222b4/">
+					<img src = "http://www.iconninja.com/files/863/607/751/network-linkedin-social-connection-circular-circle-media-icon.svg" width="36" height="36" alt="LinkedIn"/>
+        </a>
+  		</p>
 		</td>
 		<td>
 		Aayush Kumar
