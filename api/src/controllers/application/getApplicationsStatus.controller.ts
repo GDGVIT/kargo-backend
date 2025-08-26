@@ -57,54 +57,22 @@ async function getK8sStatus(
   }
 }
 
-const getApplicationsStatus = asyncHandler(
-  async (req: Request, res: Response) => {
-    const owner = (req.user as any)?._id || req.query.owner;
-
-    try {
-      const apps = await Application.find({ owner });
-
-      log({
-        type: "info",
-        message: `Fetching status for ${apps.length} applications for user ${owner}`,
-      });
-
-      const statusResults = await Promise.all(
-        apps.map(async (app: any) => {
-          const namespace = app.namespace || "default";
-          const deployment = app.deploymentName || app.name;
-
-          log({
-            type: "info",
-            message: `Checking status for app ${app.name} (deployment: ${deployment}, namespace: ${namespace})`,
-          });
-
-          const status = await getK8sStatus(namespace, deployment);
-          return {
-            id: app._id,
-            name: app.name,
-            status,
-          };
-        })
-      );
-
-      log({
-        type: "success",
-        message: `Successfully fetched status for ${statusResults.length} applications`,
-      });
-
-      res.json({ status: statusResults });
-    } catch (error) {
-      log({
-        type: "error",
-        message: "Failed to fetch application statuses",
-        meta: error,
-      });
-
-      // Return empty status array instead of throwing error
-      res.json({ status: [] });
-    }
-  }
-);
+const getApplicationsStatus = asyncHandler(async (req: Request, res: Response) => {
+  const owner = (req.user as any)?._id || req.query.owner;
+  const apps = await Application.find({ owner });
+  const statusResults = await Promise.all(
+    apps.map(async (app: any) => {
+      const namespace = app.namespace || "default";
+      const deployment = (app.deploymentName || app.name) + "-deployment";
+      const status = await getK8sStatus(namespace, deployment);
+      return {
+        id: app._id,
+        name: app.name,
+        status,
+      };
+    })
+  );
+  res.json({ status: statusResults });
+});
 
 export default getApplicationsStatus;
