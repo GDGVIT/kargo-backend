@@ -27,7 +27,9 @@ const streamApplicationLogs = asyncHandler(
       // Get all pods for the app using secure Kubernetes client
       const pods = await k8sClient.getPodsInNamespace(namespace);
       const appPods = pods.filter(
-        (pod) => pod.metadata?.labels?.app === app.name
+        (pod) =>
+          pod.metadata?.labels?.app === app.name ||
+          pod.metadata?.labels?.deployment === (app.deploymentName || app.name)
       );
 
       const podNames = appPods
