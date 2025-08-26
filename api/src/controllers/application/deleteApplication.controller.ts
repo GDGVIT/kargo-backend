@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import env from "../../config/env";
 import k8sClient from "../../utils/k8s/client";
+import { hashVolumeName } from "../../utils/hashUtil";
 
 // Helper to stream progress
 function streamStep(
@@ -106,18 +107,21 @@ const deleteApplication = asyncHandler(async (req: Request, res: Response) => {
         `Deleting image pull secret: ${name}-regcred`
       );
       
-      // Delete PVCs and PVs (auto-generated volume)
+      // Delete PVCs and PVs (auto-generated volume) using hash-based naming
       const autoVolumeName = `${name}-data`;
+      const hash = hashVolumeName(`${autoVolumeName}-${deployment}-${appId}`);
+      const pvName = `${autoVolumeName}-${hash}-pv`;
+      const pvcName = `${autoVolumeName}-${hash}-pvc`;
       await deleteK8sResource(
-        () => k8sClient.deleteResourceByNameAndKind(`${autoVolumeName}-pvc`, 'PersistentVolumeClaim', namespace),
+        () => k8sClient.deleteResourceByNameAndKind(pvcName, 'PersistentVolumeClaim', namespace),
         'PVC',
-        `Deleting PVC: ${autoVolumeName}-pvc`
+        `Deleting PVC: ${pvcName}`
       );
       
       await deleteK8sResource(
-        () => k8sClient.deleteResourceByNameAndKind(`${autoVolumeName}-pv`, 'PersistentVolume'),
+        () => k8sClient.deleteResourceByNameAndKind(pvName, 'PersistentVolume'),
         'PV',
-        `Deleting PV: ${autoVolumeName}-pv`
+        `Deleting PV: ${pvName}`
       );
     }
   } catch (err: any) {

@@ -3,6 +3,7 @@ import stripDates from "../helpers/stripDates";
 import IApplication from "../../../types/application.types";
 import getEnvObject from "../helpers/getEnvObject";
 import toK8sResource from "../helpers/toK8sResource";
+import { hashVolumeName } from "../../hashUtil";
 
 export default function generateDeployment(
   sanitizedApp: any,
@@ -41,14 +42,14 @@ export default function generateDeployment(
     generateEnvFromSecretBlock(sanitizedApp),
     generateResourcesBlock(sanitizedApp.resources),
     generatePortsBlock(sanitizedApp.ports),
-    generateVolumeMountsBlock(sanitizedApp.volumes),
+    generateVolumeMountsBlock(sanitizedApp.volumes, sanitizedApp.deploymentName, sanitizedApp.appId),
     generateCommandBlock(sanitizedApp.command),
     generateArgsBlock(sanitizedApp.args),
     generateProbeBlock("livenessProbe", sanitizedApp.livenessProbe),
     generateProbeBlock("readinessProbe", sanitizedApp.readinessProbe),
     generateAffinityBlock(sanitizedApp.affinity),
     `      restartPolicy: Always`,
-    generateVolumesBlock(sanitizedApp.volumes),
+    generateVolumesBlock(sanitizedApp.volumes, sanitizedApp.deploymentName, sanitizedApp.appId),
     generateTolerationsBlock(sanitizedApp.tolerations),
   ]
     .filter(Boolean)
@@ -161,27 +162,33 @@ function generateTolerationsBlock(tolerations: any[]): string {
     .join("\n")}`;
 }
 
-function generateVolumeMountsBlock(volumes: any[]): string {
+function generateVolumeMountsBlock(volumes: any[], deploymentName?: string, appId?: string): string {
   if (!volumes?.length) return "";
   return (
     `          volumeMounts:\n` +
     volumes
       .map(
-        (v: { name: string; mountPath: string }) =>
-          `            - name: ${v.name}-pvc\n              mountPath: ${v.mountPath}`
+        (v: { name: string; mountPath: string }) => {
+          const hash = hashVolumeName(`${v.name}-${deploymentName}-${appId}`);
+          const pvcName = `${v.name}-${hash}-pvc`;
+          return `            - name: ${pvcName}\n              mountPath: ${v.mountPath}`;
+        }
       )
       .join("\n")
   );
 }
 
-function generateVolumesBlock(volumes: any[]): string {
+function generateVolumesBlock(volumes: any[], deploymentName?: string, appId?: string): string {
   if (!volumes?.length) return "";
   return (
     `      volumes:\n` +
     volumes
       .map(
-        (v: any) =>
-          `        - name: ${v.name}-pvc\n          persistentVolumeClaim:\n            claimName: ${v.name}-pvc`
+        (v: any) => {
+          const hash = hashVolumeName(`${v.name}-${deploymentName}-${appId}`);
+          const pvcName = `${v.name}-${hash}-pvc`;
+          return `        - name: ${pvcName}\n          persistentVolumeClaim:\n            claimName: ${pvcName}`;
+        }
       )
       .join("\n")
   );
