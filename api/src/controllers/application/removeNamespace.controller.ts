@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
+import { exec } from "child_process";
 import Application from "../../models/application.model";
 import asyncHandler from "../../utils/handlers/asyncHandler";
 import log, { formatNotification } from "../../utils/logging/logger";
-import k8sClient from "../../utils/k8s/client";
 
 const removeNamespace = asyncHandler(async (req: Request, res: Response) => {
   const app = await Application.findById(req.params.id);
@@ -12,38 +12,25 @@ const removeNamespace = asyncHandler(async (req: Request, res: Response) => {
       .status(404)
       .json(formatNotification("Application not found", "error"));
   }
-
   const namespace = app.namespace;
-
-  if (!namespace) {
-    log({ type: "error", message: "Application namespace is undefined" });
-    return res
-      .status(500)
-      .json(formatNotification("Application namespace is undefined", "error"));
-  }
-
-  try {
-    // Use secure Kubernetes client instead of direct kubectl command
-    const result = await k8sClient.deleteNamespace(namespace);
-
+  exec(`kubectl delete namespace ${namespace}`, (err, stdout, stderr) => {
+    if (err) {
+      log({
+        type: "error",
+        message: "Failed to remove namespace",
+        meta: err,
+      });
+      return res.status(500).json({
+        ...formatNotification("Failed to remove namespace", "error"),
+        error: stderr,
+      });
+    }
     log({ type: "success", message: `Namespace removed: ${namespace}` });
     res.json({
       ...formatNotification("Namespace removed", "success"),
-      output: result.message,
+      output: stdout,
     });
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    log({
-      type: "error",
-      message: "Failed to remove namespace",
-      meta: error,
-    });
-    return res.status(500).json({
-      ...formatNotification("Failed to remove namespace", "error"),
-      error: errorMessage,
-    });
-  }
+  });
 });
 
 export default removeNamespace;

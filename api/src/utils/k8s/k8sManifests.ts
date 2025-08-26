@@ -45,18 +45,9 @@ export default function generateK8sManifests(
   // Only use the auto-generated volume if present
   const volumes = autoVolume ? [autoVolume] : [];
 
-  // Add deploymentName and uniqueId to each volume
-  const deploymentName = app.deploymentName || app.name;
-  const uniqueId = app._id?.toString?.() || app._id || "default";
-  const volumesWithId = volumes.map((v) => ({
-    ...v,
-    deploymentName,
-    uniqueId,
-  }));
-
   // Generate all manifests
   const deploymentYaml = generateDEployment(
-    { ...sanitizedApp, volumes: volumesWithId },
+    { ...sanitizedApp, volumes },
     namespace
   );
   const serviceYaml = generateService(sanitizedApp, namespace);
@@ -69,10 +60,10 @@ export default function generateK8sManifests(
 
   // Generate PV and PVC manifests for persistent volumes
   const pvManifests = volumes
-    .map((v) => generatePV(v, namespace, userId, appId, deploymentName))
+    .map((v) => generatePV(v, namespace, userId, appId))
     .filter((yaml) => yaml);
   const pvcManifests = volumes
-    .map((v) => generatePVC(v, namespace, deploymentName, appId))
+    .map((v) => generatePVC(v, namespace))
     .filter((yaml) => yaml);
 
   // Compose output
