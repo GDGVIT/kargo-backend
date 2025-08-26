@@ -2,41 +2,109 @@ import { Request, Response } from "express";
 import Application from "../../models/application.model";
 import asyncHandler from "../../utils/handlers/asyncHandler";
 import k8sClient from "../../utils/k8s/client";
+import log from "../../utils/logging/logger";
 
-async function getK8sStatus(namespace: string, deployment: string): Promise<string> {
+async function getK8sStatus(
+  namespace: string,
+  deployment: string
+): Promise<string> {
   try {
     // Use secure Kubernetes client instead of direct kubectl command
-    const deploymentInfo = await k8sClient.getDeploymentStatus(deployment, namespace);
-    
+    const deploymentInfo = await k8sClient.getDeploymentStatus(
+      deployment,
+      namespace
+    );
+
     const available = deploymentInfo.availableReplicas ?? 0;
     const desired = deploymentInfo.replicas ?? 0;
-    
+
+    log({
+      type: "info",
+      message: `Deployment status for ${deployment} in ${namespace}: desired=${desired}, available=${available}`,
+    });
+
     if (desired === 0) return "stopped";
     if (available === desired) return "online";
     if (available === 0 && desired > 0) return "starting";
     if (available < desired) return "partially online";
     return "unknown";
   } catch (error) {
+    // Log the specific error for debugging
+    log({
+      type: "warning",
+      message: `Failed to get status for deployment ${deployment} in namespace ${namespace}`,
+      meta: error,
+    });
+
+    // Check if error indicates the deployment doesn't exist
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (errorMsg.includes("not found") || errorMsg.includes("NotFound")) {
+      return "not deployed";
+    }
+
+    // Check if error indicates Kubernetes client is not available
+    if (
+      errorMsg.includes("Kubernetes client is not available") ||
+      errorMsg.includes("Kubernetes configuration not found") ||
+      errorMsg.includes("ECONNREFUSED") ||
+      errorMsg.includes("connection refused") ||
+      errorMsg.includes("cluster configuration not found")
+    ) {
+      return "cluster unavailable";
+    }
+
     return "offline";
   }
 }
 
-const getApplicationsStatus = asyncHandler(async (req: Request, res: Response) => {
-  const owner = (req.user as any)?._id || req.query.owner;
-  const apps = await Application.find({ owner });
-  const statusResults = await Promise.all(
-    apps.map(async (app: any) => {
-      const namespace = app.namespace || "default";
-      const deployment = app.deploymentName || app.name;
-      const status = await getK8sStatus(namespace, deployment);
-      return {
-        id: app._id,
-        name: app.name,
-        status,
-      };
-    })
-  );
-  res.json({ status: statusResults });
-});
+const getApplicationsStatus = asyncHandler(
+  async (req: Request, res: Response) => {
+    const owner = (req.user as any)?._id || req.query.owner;
+
+    try {
+      const apps = await Application.find({ owner });
+
+      log({
+        type: "info",
+        message: `Fetching status for ${apps.length} applications for user ${owner}`,
+      });
+
+      const statusResults = await Promise.all(
+        apps.map(async (app: any) => {
+          const namespace = app.namespace || "default";
+          const deployment = app.deploymentName || app.name;
+
+          log({
+            type: "info",
+            message: `Checking status for app ${app.name} (deployment: ${deployment}, namespace: ${namespace})`,
+          });
+
+          const status = await getK8sStatus(namespace, deployment);
+          return {
+            id: app._id,
+            name: app.name,
+            status,
+          };
+        })
+      );
+
+      log({
+        type: "success",
+        message: `Successfully fetched status for ${statusResults.length} applications`,
+      });
+
+      res.json({ status: statusResults });
+    } catch (error) {
+      log({
+        type: "error",
+        message: "Failed to fetch application statuses",
+        meta: error,
+      });
+
+      // Return empty status array instead of throwing error
+      res.json({ status: [] });
+    }
+  }
+);
 
 export default getApplicationsStatus;

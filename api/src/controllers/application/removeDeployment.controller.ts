@@ -15,7 +15,7 @@ const removeDeployment = asyncHandler(async (req: Request, res: Response) => {
       .status(404)
       .json(formatNotification("Application not found", "error"));
   }
-  
+
   const userId = (app.owner as any).toString();
   const appId = (app._id as any).toString();
   const manifestsDir = env.MANIFESTS_DIR;
@@ -25,25 +25,27 @@ const removeDeployment = asyncHandler(async (req: Request, res: Response) => {
       .status(500)
       .json(formatNotification("MANIFESTS_DIR not set in env", "error"));
   }
-  
+
   const appDir = path.join(manifestsDir, userId, appId);
-  
+
   try {
     // Use secure Kubernetes client instead of direct kubectl command
     const results = [];
-    
+
     if (fs.existsSync(appDir)) {
       // Read and delete each manifest file using SDK
-      const files = fs.readdirSync(appDir).filter(file => file.endsWith('.yaml'));
-      
+      const files = fs
+        .readdirSync(appDir)
+        .filter((file) => file.endsWith(".yaml"));
+
       for (const file of files) {
         const filePath = path.join(appDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = fs.readFileSync(filePath, "utf8");
         const result = await k8sClient.deleteResource(content);
         results.push(result);
       }
     }
-    
+
     log({
       type: "success",
       message: `Deployment removed for app: ${app.name}`,
@@ -51,10 +53,11 @@ const removeDeployment = asyncHandler(async (req: Request, res: Response) => {
     res.json({
       ...formatNotification("Deployment removed", "success"),
       output: `Successfully deleted ${results.length} resources`,
-      results
+      results,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     log({
       type: "error",
       message: "Failed to remove deployment",

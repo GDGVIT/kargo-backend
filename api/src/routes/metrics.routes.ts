@@ -22,8 +22,6 @@ router.get("/apiuptime", ensureAuthenticated, (req: Request, res: Response) => {
   res.json({ uptime, history });
 });
 
-
-
 router.get("/overall", ensureAuthenticated, getOverallMetrics);
 
 export default router;

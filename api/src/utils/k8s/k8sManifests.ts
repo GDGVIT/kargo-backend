@@ -48,7 +48,11 @@ export default function generateK8sManifests(
   // Add deploymentName and uniqueId to each volume
   const deploymentName = app.deploymentName || app.name;
   const uniqueId = app._id?.toString?.() || app._id || "default";
-  const volumesWithId = volumes.map((v) => ({ ...v, deploymentName, uniqueId }));
+  const volumesWithId = volumes.map((v) => ({
+    ...v,
+    deploymentName,
+    uniqueId,
+  }));
 
   // Generate all manifests
   const deploymentYaml = generateDEployment(

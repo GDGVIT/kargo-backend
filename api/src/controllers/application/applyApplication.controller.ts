@@ -14,13 +14,16 @@ import k8sClient from "../../utils/k8s/client";
 /**
  * Safely parse and apply YAML content to Kubernetes
  */
-async function applyYamlContent(yamlContent: string, description?: string): Promise<void> {
+async function applyYamlContent(
+  yamlContent: string,
+  description?: string
+): Promise<void> {
   // Skip empty or whitespace-only content
-  if (!yamlContent || yamlContent.trim() === '') {
+  if (!yamlContent || yamlContent.trim() === "") {
     if (description) {
       log({
-        type: 'info',
-        message: `Skipping empty ${description} - no content to apply`
+        type: "info",
+        message: `Skipping empty ${description} - no content to apply`,
       });
     }
     return;
@@ -29,13 +32,13 @@ async function applyYamlContent(yamlContent: string, description?: string): Prom
   try {
     // Parse YAML to JavaScript object
     const resource = yaml.load(yamlContent) as any;
-    
+
     // Skip if parsing resulted in null or empty object
-    if (!resource || typeof resource !== 'object') {
+    if (!resource || typeof resource !== "object") {
       if (description) {
         log({
-          type: 'info',
-          message: `Skipping ${description} - no valid resource found`
+          type: "info",
+          message: `Skipping ${description} - no valid resource found`,
         });
       }
       return;
@@ -44,13 +47,15 @@ async function applyYamlContent(yamlContent: string, description?: string): Prom
     // Apply the parsed resource
     await k8sClient.applyResource(resource);
   } catch (error) {
-    const errorMsg = `Failed to apply ${description || 'YAML content'}`;
+    const errorMsg = `Failed to apply ${description || "YAML content"}`;
     log({
-      type: 'error',
+      type: "error",
       message: errorMsg,
-      meta: { error, content: yamlContent }
+      meta: { error, content: yamlContent },
     });
-    throw new Error(`${errorMsg}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `${errorMsg}: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 }
 
@@ -73,7 +78,10 @@ async function applyManifestSequence(
 ) {
   try {
     // Apply namespace first using secure Kubernetes client
-    const namespaceContent = fs.readFileSync(path.join(appDir, "namespace.yaml"), "utf8");
+    const namespaceContent = fs.readFileSync(
+      path.join(appDir, "namespace.yaml"),
+      "utf8"
+    );
     await applyYamlContent(namespaceContent, "namespace");
 
     // Apply PVs first if present
@@ -84,40 +92,53 @@ async function applyManifestSequence(
 
     // Apply PVCs next if present
     if (fs.existsSync(path.join(appDir, "pvcs.yaml"))) {
-      const pvcsContent = fs.readFileSync(path.join(appDir, "pvcs.yaml"), "utf8");
+      const pvcsContent = fs.readFileSync(
+        path.join(appDir, "pvcs.yaml"),
+        "utf8"
+      );
       await applyYamlContent(pvcsContent, "persistent volume claims");
     }
 
     // Apply secret using secure client
-    const secretContent = fs.readFileSync(path.join(appDir, "secret.yaml"), "utf8");
+    const secretContent = fs.readFileSync(
+      path.join(appDir, "secret.yaml"),
+      "utf8"
+    );
     await applyYamlContent(secretContent, "secret");
-    
+
     // Apply image pull secret if present
     if (fs.existsSync(path.join(appDir, "imagepullsecret.yaml"))) {
-      const imagePullSecretContent = fs.readFileSync(path.join(appDir, "imagepullsecret.yaml"), "utf8");
+      const imagePullSecretContent = fs.readFileSync(
+        path.join(appDir, "imagepullsecret.yaml"),
+        "utf8"
+      );
       await applyYamlContent(imagePullSecretContent, "image pull secret");
     }
 
     // Apply remaining manifests
     const results = [];
     for (const filename of manifestFiles) {
-      if (filename !== "namespace.yaml" && filename !== "pvs.yaml" && 
-          filename !== "pvcs.yaml" && filename !== "secret.yaml" && 
-          filename !== "imagepullsecret.yaml") {
+      if (
+        filename !== "namespace.yaml" &&
+        filename !== "pvs.yaml" &&
+        filename !== "pvcs.yaml" &&
+        filename !== "secret.yaml" &&
+        filename !== "imagepullsecret.yaml"
+      ) {
         const filePath = path.join(appDir, filename);
         if (fs.existsSync(filePath)) {
           const content = fs.readFileSync(filePath, "utf8");
           await applyYamlContent(content, filename);
-          results.push({ file: filename, status: 'applied' });
+          results.push({ file: filename, status: "applied" });
         }
       }
     }
-    
+
     log({ type: "success", message: `Application applied: ${appName}` });
     res.json({
       ...formatNotification("Application applied", "success"),
       output: `Successfully applied ${results.length} resources`,
-      results
+      results,
     });
   } catch (err: any) {
     log({ type: "error", message: "Failed to apply manifests", meta: err });
@@ -209,7 +230,10 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Apply namespace first using secure client
-  const namespaceContent = fs.readFileSync(path.join(appDir, "namespace.yaml"), "utf8");
+  const namespaceContent = fs.readFileSync(
+    path.join(appDir, "namespace.yaml"),
+    "utf8"
+  );
   await applyYamlContent(namespaceContent, "namespace");
 
   // Apply PVs first if present

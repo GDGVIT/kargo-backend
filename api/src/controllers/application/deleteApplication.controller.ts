@@ -71,56 +71,86 @@ const deleteApplication = asyncHandler(async (req: Request, res: Response) => {
       }
     } else {
       // Delete individual resources in default namespace using SECURE SDK
-      
+
       // Delete deployment
       await deleteK8sResource(
-        () => k8sClient.deleteResourceByNameAndKind(`${deployment}-deployment`, 'Deployment', namespace),
-        'deployment',
+        () =>
+          k8sClient.deleteResourceByNameAndKind(
+            `${deployment}-deployment`,
+            "Deployment",
+            namespace
+          ),
+        "deployment",
         `Deleting deployment: ${deployment}-deployment`
       );
-      
+
       // Delete service
       await deleteK8sResource(
-        () => k8sClient.deleteResourceByNameAndKind(`${service}-service`, 'Service', namespace),
-        'service',
+        () =>
+          k8sClient.deleteResourceByNameAndKind(
+            `${service}-service`,
+            "Service",
+            namespace
+          ),
+        "service",
         `Deleting service: ${service}-service`
       );
-      
+
       // Delete ingress
       await deleteK8sResource(
-        () => k8sClient.deleteResourceByNameAndKind(`${name}-ingress`, 'Ingress', namespace),
-        'ingress',
+        () =>
+          k8sClient.deleteResourceByNameAndKind(
+            `${name}-ingress`,
+            "Ingress",
+            namespace
+          ),
+        "ingress",
         `Deleting ingress: ${name}-ingress`
       );
-      
+
       // Delete secret
       await deleteK8sResource(
-        () => k8sClient.deleteResourceByNameAndKind(`${name}-env-secret`, 'Secret', namespace),
-        'secret',
+        () =>
+          k8sClient.deleteResourceByNameAndKind(
+            `${name}-env-secret`,
+            "Secret",
+            namespace
+          ),
+        "secret",
         `Deleting secret: ${name}-env-secret`
       );
-      
+
       // Delete image pull secret
       await deleteK8sResource(
-        () => k8sClient.deleteResourceByNameAndKind(`${name}-regcred`, 'Secret', namespace),
-        'image pull secret',
+        () =>
+          k8sClient.deleteResourceByNameAndKind(
+            `${name}-regcred`,
+            "Secret",
+            namespace
+          ),
+        "image pull secret",
         `Deleting image pull secret: ${name}-regcred`
       );
-      
+
       // Delete PVCs and PVs (auto-generated volume) using hash-based naming
       const autoVolumeName = `${name}-data`;
       const hash = hashVolumeName(`${autoVolumeName}-${deployment}-${appId}`);
       const pvName = `${autoVolumeName}-${hash}-pv`;
       const pvcName = `${autoVolumeName}-${hash}-pvc`;
       await deleteK8sResource(
-        () => k8sClient.deleteResourceByNameAndKind(pvcName, 'PersistentVolumeClaim', namespace),
-        'PVC',
+        () =>
+          k8sClient.deleteResourceByNameAndKind(
+            pvcName,
+            "PersistentVolumeClaim",
+            namespace
+          ),
+        "PVC",
         `Deleting PVC: ${pvcName}`
       );
-      
+
       await deleteK8sResource(
-        () => k8sClient.deleteResourceByNameAndKind(pvName, 'PersistentVolume'),
-        'PV',
+        () => k8sClient.deleteResourceByNameAndKind(pvName, "PersistentVolume"),
+        "PV",
         `Deleting PV: ${pvName}`
       );
     }
