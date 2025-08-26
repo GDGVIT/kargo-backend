@@ -1,30 +1,28 @@
 import env from "../../../config/env";
 import path from "path";
 
-import { hashVolumeName } from "../../hashUtil";
-
 export default function generatePV(
   volume: any,
   namespace: string,
   userId: string,
-  appId: string,
-  deploymentName: string
+  appId: string
 ): string {
   if (!volume.name || !volume.size) return "";
+  // Use env var for root path, must be Linux-style absolute path
   let rootPath = env.VOLUME_ROOT_PATH;
+  // Ensure rootPath is Linux-style absolute
   if (!rootPath.startsWith("/")) {
     throw new Error(
       `VOLUME_ROOT_PATH must be a Linux-style absolute path (starts with /), got: ${rootPath}`
     );
   }
-  const hash = hashVolumeName(`${volume.name}-${deploymentName}-${appId}`);
-  const pvName = `${volume.name}-${hash}-pv`;
-  const hostPath = path.posix.join(rootPath, userId, appId, pvName);
+  // Always use posix.join for k8s hostPath
+  const hostPath = path.posix.join(rootPath, userId, appId, volume.name);
   return [
     `apiVersion: v1`,
     `kind: PersistentVolume`,
     `metadata:`,
-    `  name: ${pvName}`,
+    `  name: ${volume.name}-pv`,
     `  labels:`,
     `    app: ${namespace}`,
     `spec:`,

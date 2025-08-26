@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import yaml from "js-yaml";
+import { exec as execCb } from "child_process";
+import { promisify } from "util";
 import Application from "../../models/application.model";
 import asyncHandler from "../../utils/handlers/asyncHandler";
 import generateK8sManifests from "../../utils/k8s/k8sManifests";
@@ -9,55 +10,8 @@ import log, { formatNotification } from "../../utils/logging/logger";
 import type IApplication from "../../types/application.types";
 import type { Document } from "mongoose";
 import env from "../../config/env";
-import k8sClient from "../../utils/k8s/client";
 
-/**
- * Safely parse and apply YAML content to Kubernetes
- */
-async function applyYamlContent(
-  yamlContent: string,
-  description?: string
-): Promise<void> {
-  // Skip empty or whitespace-only content
-  if (!yamlContent || yamlContent.trim() === "") {
-    if (description) {
-      log({
-        type: "info",
-        message: `Skipping empty ${description} - no content to apply`,
-      });
-    }
-    return;
-  }
-
-  try {
-    // Parse YAML to JavaScript object
-    const resource = yaml.load(yamlContent) as any;
-
-    // Skip if parsing resulted in null or empty object
-    if (!resource || typeof resource !== "object") {
-      if (description) {
-        log({
-          type: "info",
-          message: `Skipping ${description} - no valid resource found`,
-        });
-      }
-      return;
-    }
-
-    // Apply the parsed resource
-    await k8sClient.applyResource(resource);
-  } catch (error) {
-    const errorMsg = `Failed to apply ${description || "YAML content"}`;
-    log({
-      type: "error",
-      message: errorMsg,
-      meta: { error, content: yamlContent },
-    });
-    throw new Error(
-      `${errorMsg}: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
-  }
-}
+const exec = promisify(execCb);
 
 function writeManifestFiles(
   appDir: string,
@@ -77,68 +31,31 @@ async function applyManifestSequence(
   res: Response
 ) {
   try {
-    // Apply namespace first using secure Kubernetes client
-    const namespaceContent = fs.readFileSync(
-      path.join(appDir, "namespace.yaml"),
-      "utf8"
-    );
-    await applyYamlContent(namespaceContent, "namespace");
+    // Apply namespace first
+    await exec(`kubectl apply -f namespace.yaml`, { cwd: appDir });
 
     // Apply PVs first if present
     if (fs.existsSync(path.join(appDir, "pvs.yaml"))) {
-      const pvsContent = fs.readFileSync(path.join(appDir, "pvs.yaml"), "utf8");
-      await applyYamlContent(pvsContent, "persistent volumes");
+      await exec(`kubectl apply -f pvs.yaml`, { cwd: appDir });
     }
 
     // Apply PVCs next if present
     if (fs.existsSync(path.join(appDir, "pvcs.yaml"))) {
-      const pvcsContent = fs.readFileSync(
-        path.join(appDir, "pvcs.yaml"),
-        "utf8"
-      );
-      await applyYamlContent(pvcsContent, "persistent volume claims");
+      await exec(`kubectl apply -f pvcs.yaml`, { cwd: appDir });
     }
 
-    // Apply secret using secure client
-    const secretContent = fs.readFileSync(
-      path.join(appDir, "secret.yaml"),
-      "utf8"
-    );
-    await applyYamlContent(secretContent, "secret");
-
-    // Apply image pull secret if present
+    await exec(`kubectl apply -f secret.yaml`, { cwd: appDir });
     if (fs.existsSync(path.join(appDir, "imagepullsecret.yaml"))) {
-      const imagePullSecretContent = fs.readFileSync(
-        path.join(appDir, "imagepullsecret.yaml"),
-        "utf8"
-      );
-      await applyYamlContent(imagePullSecretContent, "image pull secret");
+      await exec(`kubectl apply -f imagepullsecret.yaml`, { cwd: appDir });
     }
-
-    // Apply remaining manifests
-    const results = [];
-    for (const filename of manifestFiles) {
-      if (
-        filename !== "namespace.yaml" &&
-        filename !== "pvs.yaml" &&
-        filename !== "pvcs.yaml" &&
-        filename !== "secret.yaml" &&
-        filename !== "imagepullsecret.yaml"
-      ) {
-        const filePath = path.join(appDir, filename);
-        if (fs.existsSync(filePath)) {
-          const content = fs.readFileSync(filePath, "utf8");
-          await applyYamlContent(content, filename);
-          results.push({ file: filename, status: "applied" });
-        }
-      }
-    }
-
+    const { stdout } = await exec(
+      `kubectl apply -f . --prune -l app=${appName} --field-manager=application-controller`,
+      { cwd: appDir }
+    );
     log({ type: "success", message: `Application applied: ${appName}` });
     res.json({
       ...formatNotification("Application applied", "success"),
-      output: `Successfully applied ${results.length} resources`,
-      results,
+      output: stdout,
     });
   } catch (err: any) {
     log({ type: "error", message: "Failed to apply manifests", meta: err });
@@ -152,7 +69,7 @@ async function applyManifestSequence(
     }
     res.status(500).json({
       ...formatNotification("Failed to apply manifests", "error"),
-      error: err.message,
+      error: err.stderr || err.message,
       manifests,
     });
   }
@@ -229,22 +146,18 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
     }
   }
 
-  // Apply namespace first using secure client
-  const namespaceContent = fs.readFileSync(
-    path.join(appDir, "namespace.yaml"),
-    "utf8"
-  );
-  await applyYamlContent(namespaceContent, "namespace");
+  // Apply namespace first
+  await exec(`kubectl apply -f namespace.yaml`, { cwd: appDir });
 
   // Apply PVs first if present
   if (manifestsResult.pvs) {
     fs.writeFileSync(path.join(appDir, "pvs.yaml"), manifestsResult.pvs);
-    await applyYamlContent(manifestsResult.pvs, "persistent volumes");
+    await exec(`kubectl apply -f pvs.yaml`, { cwd: appDir });
   }
 
   // Apply PVCs next if present
   if (pvcsYaml) {
-    await applyYamlContent(pvcsYaml, "persistent volume claims");
+    await exec(`kubectl apply -f pvcs.yaml`, { cwd: appDir });
   }
 
   // Now apply the rest (deployment, service, ingress, secrets, etc.)

@@ -1,20 +1,10 @@
-import { hashVolumeName } from "../../hashUtil";
-
-export default function generatePVC(
-  volume: any,
-  namespace: string,
-  deploymentName: string,
-  appId: string
-): string {
+export default function generatePVC(volume: any, namespace: string): string {
   if (!volume.name || !volume.size) return "";
-  const hash = hashVolumeName(`${volume.name}-${deploymentName}-${appId}`);
-  const pvName = `${volume.name}-${hash}-pv`;
-  const pvcName = `${volume.name}-${hash}-pvc`;
   return [
     `apiVersion: v1`,
     `kind: PersistentVolumeClaim`,
     `metadata:`,
-    `  name: ${pvcName}`,
+    `  name: ${volume.name}-pvc`,
     `  namespace: ${namespace}`,
     `spec:`,
     `  accessModes: ["ReadWriteOnce"]`,
@@ -22,6 +12,6 @@ export default function generatePVC(
     `  resources:`,
     `    requests:`,
     `      storage: ${volume.size}`,
-    `  volumeName: ${pvName}`,
+    `  volumeName: ${volume.name}-pv`,
   ].join("\n");
 }

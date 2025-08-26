@@ -1,60 +1,29 @@
 import { Request, Response } from "express";
 import Application from "../../models/application.model";
 import asyncHandler from "../../utils/handlers/asyncHandler";
-import k8sClient from "../../utils/k8s/client";
-import log from "../../utils/logging/logger";
+import { exec } from "child_process";
 
-async function getK8sStatus(
-  namespace: string,
-  deployment: string
-): Promise<string> {
-  try {
-    // Use secure Kubernetes client instead of direct kubectl command
-    const deploymentInfo = await k8sClient.getDeploymentStatus(
-      deployment,
-      namespace
+function getK8sStatus(namespace: string, deployment: string): Promise<string> {
+  return new Promise((resolve) => {
+    exec(
+      `kubectl get deployment ${deployment}-deployment -n ${namespace} -o json`,
+      (err, stdout) => {
+        if (err) return resolve("offline");
+        try {
+          const obj = JSON.parse(stdout);
+          const available = obj.status?.availableReplicas ?? 0;
+          const desired = obj.status?.replicas ?? 0;
+          if (desired === 0) return resolve("stopped");
+          if (available === desired) return resolve("online");
+          if (available === 0 && desired > 0) return resolve("starting");
+          if (available < desired) return resolve("partially online");
+          return resolve("unknown");
+        } catch {
+          return resolve("unknown");
+        }
+      }
     );
-
-    const available = deploymentInfo.availableReplicas ?? 0;
-    const desired = deploymentInfo.replicas ?? 0;
-
-    log({
-      type: "info",
-      message: `Deployment status for ${deployment} in ${namespace}: desired=${desired}, available=${available}`,
-    });
-
-    if (desired === 0) return "stopped";
-    if (available === desired) return "online";
-    if (available === 0 && desired > 0) return "starting";
-    if (available < desired) return "partially online";
-    return "unknown";
-  } catch (error) {
-    // Log the specific error for debugging
-    log({
-      type: "warning",
-      message: `Failed to get status for deployment ${deployment} in namespace ${namespace}`,
-      meta: error,
-    });
-
-    // Check if error indicates the deployment doesn't exist
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    if (errorMsg.includes("not found") || errorMsg.includes("NotFound")) {
-      return "not deployed";
-    }
-
-    // Check if error indicates Kubernetes client is not available
-    if (
-      errorMsg.includes("Kubernetes client is not available") ||
-      errorMsg.includes("Kubernetes configuration not found") ||
-      errorMsg.includes("ECONNREFUSED") ||
-      errorMsg.includes("connection refused") ||
-      errorMsg.includes("cluster configuration not found")
-    ) {
-      return "cluster unavailable";
-    }
-
-    return "offline";
-  }
+  });
 }
 
 const getApplicationsStatus = asyncHandler(async (req: Request, res: Response) => {
@@ -63,7 +32,7 @@ const getApplicationsStatus = asyncHandler(async (req: Request, res: Response) =
   const statusResults = await Promise.all(
     apps.map(async (app: any) => {
       const namespace = app.namespace || "default";
-      const deployment = (app.deploymentName || app.name) + "-deployment";
+      const deployment = app.deploymentName || app.name;
       const status = await getK8sStatus(namespace, deployment);
       return {
         id: app._id,
