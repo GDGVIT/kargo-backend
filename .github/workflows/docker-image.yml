@@ -2,12 +2,22 @@ name: Build and Push Docker image to GHCR
 
 on:
   push:
-    branches: [dev]
+    branches: [dev, main]
   workflow_dispatch:
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            platform: linux/amd64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            platform: linux/arm64
+
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
@@ -15,9 +25,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -32,13 +39,60 @@ jobs:
       - name: Set lowercase image name
         id: meta
         run: |
-          IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY,,}:latest"
+          IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY,,}"
+          BRANCH_TAG="${GITHUB_REF_NAME}"
           echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "branch_tag=$BRANCH_TAG" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image
+      - name: Build and push image (${{ matrix.arch }})
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.image }}
+          platforms: ${{ matrix.platform }}
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ github.sha }}-${{ matrix.arch }}
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.branch_tag }}-${{ matrix.arch }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  merge-manifest:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lowercase image name
+        id: meta
+        run: |
+          IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY,,}"
+          BRANCH_TAG="${GITHUB_REF_NAME}"
+          echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "branch_tag=$BRANCH_TAG" >> $GITHUB_OUTPUT
+
+      - name: Create and push multi-arch manifests
+        run: |
+          # SHA tag
+          docker manifest create ${{ steps.meta.outputs.image }}:${{ github.sha }} \
+            --amend ${{ steps.meta.outputs.image }}:${{ github.sha }}-amd64 \
+            --amend ${{ steps.meta.outputs.image }}:${{ github.sha }}-arm64
+          docker manifest push ${{ steps.meta.outputs.image }}:${{ github.sha }}
+
+          # Branch tag
+          docker manifest create ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.branch_tag }} \
+            --amend ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.branch_tag }}-amd64 \
+            --amend ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.branch_tag }}-arm64
+          docker manifest push ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.branch_tag }}
+
+          # Dev branch gets latest
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            docker manifest create ${{ steps.meta.outputs.image }}:latest \
+              --amend ${{ steps.meta.outputs.image }}:${{ github.sha }}-amd64 \
+              --amend ${{ steps.meta.outputs.image }}:${{ github.sha }}-arm64
+            docker manifest push ${{ steps.meta.outputs.image }}:latest
+          fi
