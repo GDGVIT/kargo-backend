@@ -80,7 +80,7 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
     await sendVerificationEmail({
       to: email,
       token: verificationToken,
-      domain: env.CUSTOM_DOMAIN,
+      domain: env.CUSTOM_DOMAIN || req.headers.origin || "",
       name,
     });
 

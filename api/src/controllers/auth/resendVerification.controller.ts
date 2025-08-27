@@ -45,6 +45,21 @@ const resendVerification = async (req: Request, res: Response) => {
   user.verificationToken = token;
   await user.save();
 
+  if (!env.CUSTOM_DOMAIN) {
+    log({
+      type: "error",
+      message: "CUSTOM_DOMAIN is not set in environment variables.",
+    });
+    return res
+      .status(500)
+      .json(
+        formatNotification(
+          "Server configuration error. Please contact support.",
+          "error"
+        )
+      );
+  }
+
   await sendVerificationEmail({
     to: user.email,
     token,

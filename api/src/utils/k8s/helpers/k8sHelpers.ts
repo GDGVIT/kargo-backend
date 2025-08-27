@@ -18,7 +18,8 @@ export function getResourceName(type: string, appName: string) {
 
 export const getBaseDomain = () => {
   let domain = env.INGRESS_BASE_DOMAIN;
-  if (domain.startsWith(".")) domain = domain.slice(1);
+  if (typeof domain === "string" && domain.startsWith("."))
+    domain = domain.slice(1);
   return domain;
 };
 

@@ -64,10 +64,10 @@ const env = {
   SMTP_USER: process.env.SMTP_USER,
   SMTP_PASS: process.env.SMTP_PASS,
   SMTP_FROM: process.env.SMTP_FROM,
-  CUSTOM_DOMAIN: process.env.CUSTOM_DOMAIN || "kargo.upayan.dev",
+  CUSTOM_DOMAIN: process.env.CUSTOM_DOMAIN,
 
   // Ingress domains
-  INGRESS_BASE_DOMAIN: process.env.INGRESS_BASE_DOMAIN || "vitians.in",
+  INGRESS_BASE_DOMAIN: process.env.INGRESS_BASE_DOMAIN,
 
   // Directory for manifests
   MANIFESTS_DIR: process.env.MANIFESTS_DIR,
