@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { exec as execCb } from "child_process";
 import { promisify } from "util";
+import { createPvcIfNotExists } from "../../utils/k8sPvcManager";
 import Application from "../../models/application.model";
 import asyncHandler from "../../utils/handlers/asyncHandler";
 import generateK8sManifests from "../../utils/k8s/k8sManifests";
@@ -155,9 +156,25 @@ const applyApplication = asyncHandler(async (req: Request, res: Response) => {
     await exec(`kubectl apply -f pvs.yaml`, { cwd: appDir });
   }
 
-  // Apply PVCs next if present
+
+  // Apply PVCs next if present, but only if not already present in the cluster
   if (pvcsYaml) {
-    await exec(`kubectl apply -f pvcs.yaml`, { cwd: appDir });
+    // Try to parse the YAML and extract PVC names
+    const pvcNames: string[] = [];
+    const yamlDocs = pvcsYaml.split(/^---$/m);
+    for (const doc of yamlDocs) {
+      const match = doc.match(/name:\s*([\w-]+)/);
+      if (match) {
+        pvcNames.push(match[1]);
+      }
+    }
+    for (const pvcName of pvcNames) {
+      try {
+        await createPvcIfNotExists(app.namespace!, pvcName, path.join(appDir, "pvcs.yaml"));
+      } catch (e) {
+        log({ type: "warning", message: `PVC ${pvcName} could not be created: ${e}` });
+      }
+    }
   }
 
   // Now apply the rest (deployment, service, ingress, secrets, etc.)
