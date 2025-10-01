@@ -56,7 +56,7 @@ app.use(
       httpOnly: true,
       secure: production,
       sameSite: "lax",
-      domain: production ? ".kargo.upayan.dev" : undefined,
+      domain: production ? ".kargo.dscvit.com" : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },
   })
