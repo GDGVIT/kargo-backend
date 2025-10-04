@@ -7,8 +7,9 @@
 </p>
 
 ---
-[![Join Us](https://img.shields.io/badge/Join%20Us-Developer%20Student%20Clubs-red)](https://gdg.community.dev/gdg-on-campus-vellore-institute-of-technology-vellore-india/)
-[![Discord Chat](https://img.shields.io/discord/760928671698649098.svg)](https://discord.gg/498KVdSKWR)
+[![Join Us](https://img.shields.io/badge/Join%20Us-Google%20Developer%20Groups-red)](https://gdg.community.dev/gdg-on-campus-vellore-institute-of-technology-vellore-india/)
+[![Instagram](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://www.instagram.com/gdgvitvellore/)
+[![X (Twitter)](https://img.shields.io/badge/X-%23000000.svg?logo=X&logoColor=white)](https://x.com/gdgvitvellore)
 
 [![DOCS](https://img.shields.io/badge/Documentation-see%20docs-green?style=flat-square&logo=appveyor)](https://kargo.dscvit.com/docs/) 
 [![UI ](https://img.shields.io/badge/User%20Interface-Link%20to%20UI-orange?style=flat-square&logo=appveyor)](https://kargo.dscvit.com/)
