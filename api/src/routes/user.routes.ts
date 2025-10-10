@@ -31,23 +31,23 @@ router.put("/:id/plan", ensureAuthenticated, asyncHandler(updateUserPlan));
 
 // Admin: update extra resources of a user
 router.put(
-  "/:id/extra-resources",
-  ensureAdmin,
-  asyncHandler(updateUserExtraResources)
+	"/:id/extra-resources",
+	ensureAdmin,
+	asyncHandler(updateUserExtraResources)
 );
 
 // Get total resource usage and allowed for a user (by admin or self)
 router.get(
-  "/:id/resource-usage",
-  ensureAuthenticated,
-  asyncHandler(getUserResourceUsage)
+	"/:id/resource-usage",
+	ensureAuthenticated,
+	asyncHandler(getUserResourceUsage)
 );
 
 // Get total resource usage and allowed for the current user
 router.get(
-  "/me/resource-usage",
-  ensureAuthenticated,
-  asyncHandler(getUserResourceUsage)
+	"/me/resource-usage",
+	ensureAuthenticated,
+	asyncHandler(getUserResourceUsage)
 );
 
 // GET all users (admin/superadmin only): name, email, role, plan
@@ -60,9 +60,9 @@ router.delete("/me/credentials", asyncHandler(deleteRegistryCredential));
 
 // Add user stats route
 router.get(
-  "/me/settings-stats",
-  ensureAuthenticated,
-  asyncHandler(getUserSettingsStats)
+	"/me/settings-stats",
+	ensureAuthenticated,
+	asyncHandler(getUserSettingsStats)
 );
 
 export default router;

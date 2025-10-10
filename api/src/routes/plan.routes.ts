@@ -9,8 +9,8 @@ import getPlans from "../controllers/plans/getPlans.controller";
 import updatePlan from "../controllers/plans/updatePlan.controller";
 import deletePlan from "../controllers/plans/deletePlan.controller";
 import {
-  createOrder,
-  verifyPayment,
+	createOrder,
+	verifyPayment,
 } from "../controllers/plans/razorpay.controller";
 
 const router = Router();
@@ -23,7 +23,7 @@ router.get("/", asyncHandler(getPlans));
 // Razorpay payment endpoints (public)
 router.post("/:id/create-order", asyncHandler(createOrder));
 router.post("/verify-payment", express.json(), (req, res) => {
-  verifyPayment(req, res);
+	verifyPayment(req, res);
 });
 
 // All plan management routes below require admin privileges

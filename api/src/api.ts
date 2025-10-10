@@ -20,21 +20,21 @@ const frontendUrl = env.FRONTEND_URL;
 const production = env.NODE_ENV === "production";
 
 if (production) {
-  app.set("trust proxy", 1);
+	app.set("trust proxy", 1);
 }
 
 log({
-  type: "info",
-  message: `Server starting at ${new Date().toISOString()} | ENV: ${
-    env.NODE_ENV
-  }`,
+	type: "info",
+	message: `Server starting at ${new Date().toISOString()} | ENV: ${
+		env.NODE_ENV
+	}`,
 });
 
 app.use(
-  cors({
-    origin: frontendUrl,
-    credentials: true,
-  })
+	cors({
+		origin: frontendUrl,
+		credentials: true,
+	})
 );
 
 app.use(morgan("dev"));
@@ -43,33 +43,33 @@ app.use(cookieParser());
 
 const sessionSecret = env.SESSION_SECRET;
 if (!sessionSecret) {
-  throw new Error("SESSION_SECRET is not set in environment variables.");
+	throw new Error("SESSION_SECRET is not set in environment variables.");
 }
 
 app.use(
-  session({
-    name: "kargo.sid",
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: production,
-      sameSite: "lax",
-      domain: production ? ".kargo.dscvit.com" : undefined,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
-    },
-  })
+	session({
+		name: "kargo.sid",
+		secret: sessionSecret,
+		resave: false,
+		saveUninitialized: false,
+		cookie: {
+			httpOnly: true,
+			secure: production,
+			sameSite: "lax",
+			domain: production ? ".kargo.dscvit.com" : undefined,
+			maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+		},
+	})
 );
 
 app.use(passport.initialize());
 app.use(passport.session());
 
 app.get("/", (_req: Request, res: Response) => {
-  res.json({
-    message: "API is running",
-    uptime: Math.round(process.uptime()),
-  });
+	res.json({
+		message: "API is running",
+		uptime: Math.round(process.uptime()),
+	});
 });
 
 app.use("/api/auth", authRoutes);

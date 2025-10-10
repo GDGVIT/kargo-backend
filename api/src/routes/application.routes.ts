@@ -20,13 +20,13 @@ import rolloutRestartDeployment from "../controllers/application/rolloutRestartD
 import testImageAvailabilityController from "../controllers/application/testImageAvailability.controller";
 
 const validateObjectId = (req: Request, res: Response, next: NextFunction) => {
-  const id = req.params.id;
+	const id = req.params.id;
 
-  if (!/^[0-9a-fA-F]{24}$/.test(id)) {
-    res.status(400).json({ message: "Invalid application ID format" });
-    return;
-  }
-  next();
+	if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+		res.status(400).json({ message: "Invalid application ID format" });
+		return;
+	}
+	next();
 };
 
 const router = Router();
