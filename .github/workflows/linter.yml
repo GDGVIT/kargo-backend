@@ -49,6 +49,27 @@ jobs:
           fetch-depth: 0
 
       ################################
+      # Setup Node.js for Prettier   #
+      ################################
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      ################################
+      # Install dependencies         #
+      ################################
+      - name: Install dependencies
+        run: npm ci
+
+      ################################
+      # Run Prettier check           #
+      ################################
+      - name: Check code formatting with Prettier
+        run: npm run format:check
+
+      ################################
       # Run Linter against code base #
       ################################
       - name: Lint Code Base
@@ -62,5 +83,9 @@ jobs:
           VALIDATE_BASH: false
           VALIDATE_JSCPD: false
           VALIDATE_RUST_2015: false
+          VALIDATE_JAVASCRIPT_STANDARD: false
+          VALIDATE_TYPESCRIPT_STANDARD: false
+          JAVASCRIPT_DEFAULT_STYLE: prettier
+          TYPESCRIPT_DEFAULT_STYLE: prettier
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
