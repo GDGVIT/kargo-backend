@@ -1,43 +1,43 @@
 import sendMail from "../email/mailer";
 
 export async function sendVerificationEmail({
-  to,
-  token,
-  domain,
-  name,
+	to,
+	token,
+	domain,
+	name,
 }: {
-  to: string;
-  token: string;
-  domain: string;
-  name?: string;
+	to: string;
+	token: string;
+	domain: string;
+	name?: string;
 }) {
-  const verifyUrl = `${domain}/auth/verify-email?token=${token}`;
-  const now = new Date();
-  const formattedDate = now.toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+	const verifyUrl = `${domain}/auth/verify-email?token=${token}`;
+	const now = new Date();
+	const formattedDate = now.toLocaleString("en-US", {
+		dateStyle: "medium",
+		timeStyle: "short",
+	});
 
-  let gravatarHash = "";
-  try {
-    gravatarHash = require("crypto")
-      .createHash("md5")
-      .update(to.trim().toLowerCase())
-      .digest("hex");
-  } catch (e) {
-    gravatarHash = "";
-  }
-  await sendMail({
-    to,
-    subject: "Verify your email address",
-    html: `
+	let gravatarHash = "";
+	try {
+		gravatarHash = require("crypto")
+			.createHash("md5")
+			.update(to.trim().toLowerCase())
+			.digest("hex");
+	} catch (e) {
+		gravatarHash = "";
+	}
+	await sendMail({
+		to,
+		subject: "Verify your email address",
+		html: `
       <div style="background:#18181b;padding:32px 0;min-height:100vh;font-family:'Segoe UI',Arial,sans-serif;color:#fff;">
         <div style="max-width:420px;margin:40px auto;background:#23232a;border-radius:16px;box-shadow:0 4px 32px #0002;padding:32px 28px 28px 28px;">
           <div style="text-align:center;margin-bottom:24px;">
             <img src='https://www.gravatar.com/avatar/${gravatarHash}?d=identicon' alt='avatar' style='width:64px;height:64px;border-radius:50%;margin-bottom:8px;border:2px solid #333;' />
             <h2 style="margin:0 0 8px 0;font-size:1.5rem;font-weight:600;">${
-              name ? `Hello, ${name}!` : "Welcome!"
-            }</h2>
+							name ? `Hello, ${name}!` : "Welcome!"
+						}</h2>
             <p style="margin:0 0 4px 0;font-size:1rem;color:#a1a1aa;">${to}</p>
             <p style="margin:0 0 0 0;font-size:0.95rem;color:#71717a;">${formattedDate}</p>
           </div>
@@ -53,5 +53,5 @@ export async function sendVerificationEmail({
         </div>
       </div>
     `,
-  });
+	});
 }

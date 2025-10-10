@@ -1,7 +1,7 @@
 import passport from "passport";
 
 const githubAuth = passport.authenticate("github", {
-  scope: ["user:email"],
+	scope: ["user:email"],
 });
 
 export default githubAuth;

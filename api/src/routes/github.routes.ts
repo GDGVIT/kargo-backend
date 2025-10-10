@@ -14,22 +14,22 @@ router.get("/install", githubInstall);
 
 // GitHub OAuth callback
 router.post("/callback", (req, res) => {
-  githubCallback(req, res);
+	githubCallback(req, res);
 });
 
 // Get user's GitHub repositories
 router.get("/repos", (req, res) => {
-  githubRepos(req, res);
+	githubRepos(req, res);
 });
 
 // Get GitHub installation ID for the user
 router.get("/installation-id", (req, res) => {
-  githubInstallationId(req, res);
+	githubInstallationId(req, res);
 });
 
 // Save GitHub installation ID for the user
 router.post("/installation-id", (req, res) => {
-  githubSaveInstallationID(req, res);
+	githubSaveInstallationID(req, res);
 });
 
 export default router;
