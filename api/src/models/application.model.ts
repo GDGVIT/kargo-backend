@@ -3,9 +3,9 @@ import IApplication from "../types/application.types";
 
 export const ResourceSchema = new Schema(
 	{
-		cpuMilli: { type: Number, min: 0 }, // e.g., 250 = 0.25 vCPU
-		memoryMB: { type: Number, min: 0 }, // e.g., 512
-		storageGB: { type: Number, min: 0 }, // e.g., 10
+		cpu: { type: Number, min: 0 }, // CPU cores (e.g., 0.25 = 250m, 1 = 1000m)
+		memory: { type: Number, min: 0 }, // Memory in bytes (e.g., 536870912 = 512 MiB)
+		storage: { type: Number, min: 0 }, // Storage in bytes (e.g., 10737418240 = 10 GiB)
 	},
 	{ _id: false }
 );

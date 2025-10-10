@@ -67,14 +67,14 @@ const getApplicationMetrics = asyncHandler(
 			metrics: results,
 			resources: {
 				requests: {
-					cpuMilli: app.resources?.requests?.cpuMilli || null,
-					memoryMB: app.resources?.requests?.memoryMB || null,
-					storageGB: app.resources?.requests?.storageGB || null,
+					cpu: app.resources?.requests?.cpu || null,
+					memory: app.resources?.requests?.memory || null,
+					storage: app.resources?.requests?.storage || null,
 				},
 				limits: {
-					cpuMilli: app.resources?.limits?.cpuMilli || null,
-					memoryMB: app.resources?.limits?.memoryMB || null,
-					storageGB: app.resources?.limits?.storageGB || null,
+					cpu: app.resources?.limits?.cpu || null,
+					memory: app.resources?.limits?.memory || null,
+					storage: app.resources?.limits?.storage || null,
 				},
 			},
 		});

@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 
 export interface Resource {
-	cpuMilli?: number;
-	memoryMB?: number;
-	storageGB?: number;
+	cpu?: number;
+	memory?: number;
+	storage?: number;
 }
 export default interface IApplication {
 	_id?: mongoose.Types.ObjectId | string;

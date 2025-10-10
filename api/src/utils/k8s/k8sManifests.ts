@@ -20,16 +20,17 @@ export default function generateK8sManifests(
 	// Auto-generate a single volume if storage is set in resources
 	let autoVolume = null;
 	let storageGB = 0;
-	if (
-		app.resources?.requests?.storageGB &&
-		app.resources.requests.storageGB > 0
-	) {
-		storageGB = app.resources.requests.storageGB;
+	if (app.resources?.requests?.storage && app.resources.requests.storage > 0) {
+		// Convert bytes to GB
+		storageGB = Math.ceil(
+			app.resources.requests.storage / (1024 * 1024 * 1024)
+		);
 	} else if (
-		app.resources?.limits?.storageGB &&
-		app.resources.limits.storageGB > 0
+		app.resources?.limits?.storage &&
+		app.resources.limits.storage > 0
 	) {
-		storageGB = app.resources.limits.storageGB;
+		// Convert bytes to GB
+		storageGB = Math.ceil(app.resources.limits.storage / (1024 * 1024 * 1024));
 	}
 	if (storageGB > 0) {
 		autoVolume = {

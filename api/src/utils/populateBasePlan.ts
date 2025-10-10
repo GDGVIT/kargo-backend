@@ -12,14 +12,14 @@ export async function populateBasePlanIfEmpty() {
 			description: "Default base plan automatically created on first start.",
 			resources: {
 				requests: {
-					cpuMilli: 15, // 15 m
-					memoryMB: 32, // 32 MB
-					storageGB: 1, // 1 GB
+					cpu: 0.015, // 15m cores
+					memory: 33554432, // 32 MiB in bytes
+					storage: 1073741824, // 1 GiB in bytes
 				},
 				limits: {
-					cpuMilli: 20, // 20 m
-					memoryMB: 64, // 64 MB
-					storageGB: 1, // 1 GB
+					cpu: 0.02, // 20m cores
+					memory: 67108864, // 64 MiB in bytes
+					storage: 1073741824, // 1 GiB in bytes
 				},
 			},
 			isDefault: true,

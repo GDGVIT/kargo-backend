@@ -143,11 +143,11 @@ function generateResourcesBlock(resources: any): string {
 	if (!resources) return "";
 	return `          resources:
             requests:
-              cpu: "${toK8sResource(resources.requests?.cpuMilli, "cpu")}"
-              memory: "${toK8sResource(resources.requests?.memoryMB, "memory")}"
+              cpu: "${toK8sResource(resources.requests?.cpu, "cpu")}"
+              memory: "${toK8sResource(resources.requests?.memory, "memory")}"
             limits:
-              cpu: "${toK8sResource(resources.limits?.cpuMilli, "cpu")}"
-              memory: "${toK8sResource(resources.limits?.memoryMB, "memory")}"`;
+              cpu: "${toK8sResource(resources.limits?.cpu, "cpu")}"
+              memory: "${toK8sResource(resources.limits?.memory, "memory")}"`;
 }
 
 function generateTolerationsBlock(tolerations: any[]): string {
