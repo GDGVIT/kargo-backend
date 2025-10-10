@@ -1,4 +1,37 @@
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 build
+coverage
+
+# Lock files
 package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+*.log
+logs
+
+# Environment files
+.env
+.env.*
+
+# Git
+.git
+.github
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Other
+*.min.js
+*.min.css
+*.bundle.js
