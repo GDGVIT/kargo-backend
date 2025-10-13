@@ -14,6 +14,7 @@
 
 [![DOCS](https://img.shields.io/badge/Documentation-see%20docs-green?style=flat-square&logo=appveyor)](https://kargo.dscvit.com/docs/)
 [![UI ](https://img.shields.io/badge/User%20Interface-Link%20to%20UI-orange?style=flat-square&logo=appveyor)](https://kargo.dscvit.com/)
+[![DeepWiki](https://img.shields.io/badge/DeepWiki-kargo--backend-blue?style=flat-square&logo=appveyor)](https://deepwiki.com/GDGVIT/kargo-backend)
 
 ## Features
 
