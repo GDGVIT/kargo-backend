@@ -1,4 +1,4 @@
-version: "3.8"
+version: '3.8'
 
 services:
   kargo-backend:
@@ -6,7 +6,7 @@ services:
     # For local development, comment the above line and uncomment the build context below:
     # build: .
     ports:
-      - "5000:5000"
+      - '5000:5000'
     environment:
       - NODE_ENV=production
     env_file:

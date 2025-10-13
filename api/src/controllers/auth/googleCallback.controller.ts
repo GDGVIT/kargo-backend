@@ -1,12 +1,12 @@
-import { Request, Response } from "express";
-import passport from "passport";
-import env from "../../config/env";
+import { Request, Response } from 'express';
+import passport from 'passport';
+import env from '../../config/env';
 
 const googleCallback = [
-	passport.authenticate("google", { failureRedirect: "/login?error=google" }),
-	(_req: Request, res: Response) => {
-		res.redirect(env.FRONTEND_URL + "/settings");
-	},
+  passport.authenticate('google', { failureRedirect: '/login?error=google' }),
+  (_req: Request, res: Response) => {
+    res.redirect(env.FRONTEND_URL + '/settings');
+  },
 ];
 
 export default googleCallback;

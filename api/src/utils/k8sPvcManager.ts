@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec } from 'child_process';
 
 /**
  * Checks if a PVC exists in the given namespace.
@@ -6,16 +6,13 @@ import { exec } from "child_process";
  * @param pvcName Name of the PVC
  * @returns Promise<boolean>
  */
-export function pvcExists(
-	namespace: string,
-	pvcName: string
-): Promise<boolean> {
-	return new Promise((resolve) => {
-		exec(`kubectl get pvc ${pvcName} -n ${namespace}`, (err) => {
-			if (err) return resolve(false);
-			return resolve(true);
-		});
-	});
+export function pvcExists(namespace: string, pvcName: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    exec(`kubectl get pvc ${pvcName} -n ${namespace}`, (err) => {
+      if (err) return resolve(false);
+      return resolve(true);
+    });
+  });
 }
 
 /**
@@ -26,19 +23,16 @@ export function pvcExists(
  * @returns Promise<boolean> true if created, false if already existed
  */
 export async function createPvcIfNotExists(
-	namespace: string,
-	pvcName: string,
-	manifestPath: string
+  namespace: string,
+  pvcName: string,
+  manifestPath: string
 ): Promise<boolean> {
-	const exists = await pvcExists(namespace, pvcName);
-	if (exists) return false;
-	return new Promise((resolve, reject) => {
-		exec(
-			`kubectl apply -f ${manifestPath} -n ${namespace}`,
-			(err, stdout, stderr) => {
-				if (err) return reject(stderr || err.message);
-				resolve(true);
-			}
-		);
-	});
+  const exists = await pvcExists(namespace, pvcName);
+  if (exists) return false;
+  return new Promise((resolve, reject) => {
+    exec(`kubectl apply -f ${manifestPath} -n ${namespace}`, (err, stdout, stderr) => {
+      if (err) return reject(stderr || err.message);
+      resolve(true);
+    });
+  });
 }
