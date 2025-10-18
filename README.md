@@ -7,33 +7,35 @@
 </p>
 
 ---
+
 [![Join Us](https://img.shields.io/badge/Join%20Us-Google%20Developer%20Groups-red)](https://gdg.community.dev/gdg-on-campus-vellore-institute-of-technology-vellore-india/)
 [![Instagram](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://www.instagram.com/gdgvitvellore/)
 [![X (Twitter)](https://img.shields.io/badge/X-%23000000.svg?logo=X&logoColor=white)](https://x.com/gdgvitvellore)
 
-[![DOCS](https://img.shields.io/badge/Documentation-see%20docs-green?style=flat-square&logo=appveyor)](https://kargo.dscvit.com/docs/) 
+[![DOCS](https://img.shields.io/badge/Documentation-see%20docs-green?style=flat-square&logo=appveyor)](https://kargo.dscvit.com/docs/)
 [![UI ](https://img.shields.io/badge/User%20Interface-Link%20to%20UI-orange?style=flat-square&logo=appveyor)](https://kargo.dscvit.com/)
-
+[![DeepWiki](https://img.shields.io/badge/DeepWiki-kargo--backend-blue?style=flat-square&logo=appveyor)](https://deepwiki.com/GDGVIT/kargo-backend)
 
 ## Features
-- [x]  AI-Powered Docker Configuration - Automatic Dockerfile and Docker Compose generation
-- [x]  Kubernetes Native Integration - Secure cluster management and deployment
-- [x]  Multi-Provider Authentication - Google OAuth, GitHub OAuth, and local authentication
-- [x]  Real-time Application Monitoring - Live status tracking and metrics collection
+
+- [x] AI-Powered Docker Configuration - Automatic Dockerfile and Docker Compose generation
+- [x] Kubernetes Native Integration - Secure cluster management and deployment
+- [x] Multi-Provider Authentication - Google OAuth, GitHub OAuth, and local authentication
+- [x] Real-time Application Monitoring - Live status tracking and metrics collection
 
 <br>
 
 ## Dependencies
- - Node.js 20 or higher with TypeScript 5.x
- - MongoDB for database storage
- - Python 3.8+ for AI features (LangChain, Groq)
- - Kubernetes cluster access for deployment
 
+- Node.js 20 or higher with TypeScript 5.x
+- MongoDB for database storage
+- Python 3.8+ for AI features (LangChain, Groq)
+- Kubernetes cluster access for deployment
 
 ## Running
 
-
 Clone the repository and install dependencies
+
 ```bash
 git clone https://github.com/GDGVIT/kargo-backend.git
 cd kargo-backend
