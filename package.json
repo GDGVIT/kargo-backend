@@ -21,7 +21,9 @@
   },
   "homepage": "https://github.com/GDGVIT/kargo-backend#readme",
   "dependencies": {
-    "razorpay": "^2.9.6"
+    "nodemon": "^3.1.10",
+    "razorpay": "^2.9.6",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "prettier": "^3.6.2"
