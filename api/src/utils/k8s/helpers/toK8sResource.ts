@@ -3,30 +3,34 @@ export default function toK8sResource(
   type: 'cpu' | 'memory'
 ): string {
   if (val === undefined || val === null || val === '') return type === 'cpu' ? '0m' : '0Mi';
+
+  // Frontend/base units:
+  // - CPU is provided in millicores (m)
+  // - Memory is provided in megabytes (MB ~ MiB)
   if (typeof val === 'number') {
     if (type === 'cpu') {
-      // CPU is in cores (e.g., 0.25 = 250m, 1 = 1000m)
-      if (val < 1) return `${Math.round(val * 1000)}m`;
-      return `${Math.round(val * 1000)}m`;
+      // CPU already in millicores
+      return `${Math.round(val)}m`;
     }
     if (type === 'memory') {
-      // Memory is in bytes, convert to MiB for K8s
-      return `${Math.round(val / (1024 * 1024))}Mi`;
+      // Memory already in MB -> use Mi in K8s
+      return `${Math.round(val)}Mi`;
     }
   }
+
   if (typeof val === 'string') {
-    // If already ends with m, Mi, Gi, etc., return as is
+    // If already ends with appropriate unit, return as-is
     if (type === 'cpu' && /m$/.test(val)) return val;
     if (type === 'memory' && /(Mi|Gi)$/.test(val)) return val;
-    // If it's a plain number string, parse and convert
-    const numVal = parseFloat(val);
+
+    // If it's a plain number string, interpret using base units above
+    const numVal = Number(val);
     if (!isNaN(numVal)) {
-      if (type === 'cpu') {
-        return `${Math.round(numVal * 1000)}m`;
-      }
-      return `${Math.round(numVal / (1024 * 1024))}Mi`;
+      if (type === 'cpu') return `${Math.round(numVal)}m`;
+      return `${Math.round(numVal)}Mi`;
     }
     return val;
   }
+
   return type === 'cpu' ? '0m' : '0Mi';
 }
