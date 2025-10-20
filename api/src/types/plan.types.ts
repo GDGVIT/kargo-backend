@@ -10,7 +10,5 @@ export default interface IPlan {
     limits?: Resource;
   };
   isDefault?: boolean;
-  /** Price in paise (integer) */
-  price?: number;
   isActive?: boolean;
 }
