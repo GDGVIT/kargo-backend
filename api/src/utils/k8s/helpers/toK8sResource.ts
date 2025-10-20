@@ -24,7 +24,7 @@ export default function toK8sResource(
     if (type === 'memory' && /(Mi|Gi)$/.test(val)) return val;
 
     // If it's a plain number string, interpret using base units above
-    const numVal = Number(val);
+    const numVal = parseFloat(val);
     if (!isNaN(numVal)) {
       if (type === 'cpu') return `${Math.round(numVal)}m`;
       return `${Math.round(numVal)}Mi`;
