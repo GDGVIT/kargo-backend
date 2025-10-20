@@ -11,7 +11,6 @@ const planSchema = new Schema<IPlan & Document>(
       limits: ResourceSchema,
     },
     isDefault: { type: Boolean, default: false },
-    price: { type: Number /* Price in paise (integer) */ },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

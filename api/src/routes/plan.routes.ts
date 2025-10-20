@@ -1,14 +1,12 @@
-// Plan routes for managing subscription plans and handling payments
+// Plan routes for managing subscription plans
 import { Router } from 'express';
 import { ensureAdmin } from '../auth/role.middleware';
 import asyncHandler from '../utils/handlers/asyncHandler';
-import express from 'express';
 import getPlanByID from '../controllers/plans/getPlanByID.controller';
 import createPlan from '../controllers/plans/createPlan.controller';
 import getPlans from '../controllers/plans/getPlans.controller';
 import updatePlan from '../controllers/plans/updatePlan.controller';
 import deletePlan from '../controllers/plans/deletePlan.controller';
-import { createOrder, verifyPayment } from '../controllers/plans/razorpay.controller';
 
 const router = Router();
 
@@ -16,12 +14,6 @@ const router = Router();
 router.get('/:id', asyncHandler(getPlanByID));
 // Public: Get all plans
 router.get('/', asyncHandler(getPlans));
-
-// Razorpay payment endpoints (public)
-router.post('/:id/create-order', asyncHandler(createOrder));
-router.post('/verify-payment', express.json(), (req, res) => {
-  verifyPayment(req, res);
-});
 
 // All plan management routes below require admin privileges
 router.use(ensureAdmin);
