@@ -1,4 +1,3 @@
-import type IApplication from '../../types/application.types';
 import generateDEployment from './generators/generateDeployment';
 import generateService from './generators/generateService';
 import generateSecret from './generators/generateSecret';
@@ -7,6 +6,7 @@ import generatePVC from './generators/generatePVC';
 import generatePV from './generators/generatePV';
 import stripDates from './helpers/stripDates';
 import generateIngress from './generators/generateIngress';
+import type IApplication from '../../types/application.types';
 
 export default function generateK8sManifests(app: IApplication): Record<string, string> {
   // Sanitize app object

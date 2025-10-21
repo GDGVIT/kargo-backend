@@ -3,14 +3,14 @@ import fs from 'fs';
 import path from 'path';
 import { exec as execCb } from 'child_process';
 import { promisify } from 'util';
-import { createPvcIfNotExists } from '../../utils/k8sPvcManager';
+import type { Document } from 'mongoose';
+import env from '../../config/env';
 import Application from '../../models/application.model';
+import { createPvcIfNotExists } from '../../utils/k8sPvcManager';
 import asyncHandler from '../../utils/handlers/asyncHandler';
 import generateK8sManifests from '../../utils/k8s/k8sManifests';
 import log, { formatNotification } from '../../utils/logging/logger';
 import type IApplication from '../../types/application.types';
-import type { Document } from 'mongoose';
-import env from '../../config/env';
 
 const exec = promisify(execCb);
 

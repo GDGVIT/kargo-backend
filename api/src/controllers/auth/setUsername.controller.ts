@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
+import type { Document } from 'mongoose';
 import User from '../../models/user.model';
 import log, { formatNotification } from '../../utils/logging/logger';
-import type IUser from '../../types/user.types';
-import type { Document } from 'mongoose';
 import isValidUsername from '../../utils/auth/isValidUsername';
 import sanitizeUser from '../../utils/auth/sanitizeUser';
+import type IUser from '../../types/user.types';
 
 const setUsername = async (req: Request, res: Response, next: NextFunction) => {
   try {

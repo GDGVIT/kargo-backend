@@ -4,16 +4,20 @@ import session from 'express-session';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+
+import env from './config/env';
+
+import './auth/passport';
+import './auth/local.strategy';
+
 import authRoutes from './routes/auth.routes';
 import githubRoutes from './routes/github.routes';
 import applicationRoutes from './routes/application.routes';
 import userRoutes from './routes/user.routes';
 import planRoutes from './routes/plan.routes';
 import metricsRoutes from './routes/metrics.routes';
+
 import log from './utils/logging/logger';
-import env from './config/env';
-import './auth/passport';
-import './auth/local.strategy';
 
 const app = express();
 const frontendUrl = env.FRONTEND_URL;

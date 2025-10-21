@@ -1,8 +1,5 @@
 // User routes for managing user resources, roles, plans, and registry credentials
 import { Router } from 'express';
-import ensureAuthenticated from '../utils/auth/ensureAuthenticated';
-import { ensureAdmin, ensureSuperadmin } from '../auth/role.middleware';
-import asyncHandler from '../utils/handlers/asyncHandler';
 
 import updateUserResources from '../controllers/user/updateUserResources.controller';
 import updateUserRole from '../controllers/user/updateUserRole.controller';
@@ -14,6 +11,10 @@ import updateUserExtraResources from '../controllers/user/updateUserExtraResourc
 import updateUserPlan from '../controllers/user/updateUserPlan.controller';
 import getAllUsers from '../controllers/user/getAllUsers.controller';
 import getUserSettingsStats from '../controllers/user/getUserSettingsStats.controller';
+
+import asyncHandler from '../utils/handlers/asyncHandler';
+import ensureAuthenticated from '../utils/auth/ensureAuthenticated';
+import { ensureAdmin, ensureSuperadmin } from '../auth/role.middleware';
 
 const router = Router();
 

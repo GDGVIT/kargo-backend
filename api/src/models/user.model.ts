@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import IUser, { IOAuth, IRegistryCredential } from '../types/user.types';
 import { ResourceSchema } from './application.model';
+import IUser, { IOAuth, IRegistryCredential } from '../types/user.types';
 
 const oauthSchema = new Schema<IOAuth>(
   {

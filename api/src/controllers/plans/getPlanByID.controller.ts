@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
+import type { Document } from 'mongoose';
 import Plan from '../../models/plan.model';
 import type IPlan from '../../types/plan.types';
-import type { Document } from 'mongoose';
 
 // Public: get a single plan by ID
 const getPlanByID = async (req: Request, res: Response, next: NextFunction) => {

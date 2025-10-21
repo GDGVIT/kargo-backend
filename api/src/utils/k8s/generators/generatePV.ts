@@ -1,5 +1,5 @@
-import env from '../../../config/env';
 import path from 'path';
+import env from '../../../config/env';
 
 export default function generatePV(
   volume: any,

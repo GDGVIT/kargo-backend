@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
+import type { Document } from 'mongoose';
 import User from '../../models/user.model';
 import log, { formatNotification } from '../../utils/logging/logger';
 import type IUser from '../../types/user.types';
-import type { Document } from 'mongoose';
 
 // Remove a registry credential by name and type
 const deleteRegistryCredential = async (req: Request, res: Response) => {

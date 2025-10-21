@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
+import env from '../../config/env';
 import Application from '../../models/application.model';
 import asyncHandler from '../../utils/handlers/asyncHandler';
 import log, { formatNotification } from '../../utils/logging/logger';
-import env from '../../config/env';
 
 const prometheusBaseUrl = (env as any).PROMETHEUS_URL;
 

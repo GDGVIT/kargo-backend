@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
+import { exec } from 'child_process';
 import Application from '../../models/application.model';
 import asyncHandler from '../../utils/handlers/asyncHandler';
-import { exec } from 'child_process';
 
 function getK8sStatus(namespace: string, deployment: string): Promise<string> {
   return new Promise((resolve) => {

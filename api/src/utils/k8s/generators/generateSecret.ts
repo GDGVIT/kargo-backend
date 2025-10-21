@@ -1,5 +1,5 @@
-import IApplication from '../../../types/application.types';
 import getEnvObject from '../helpers/getEnvObject';
+import IApplication from '../../../types/application.types';
 
 export default function generateSecret(sanitizedApp: IApplication, namespace: string): string {
   const envObj = getEnvObject(sanitizedApp.env);

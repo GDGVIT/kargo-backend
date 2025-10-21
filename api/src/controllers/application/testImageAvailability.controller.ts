@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
+import type { Document } from 'mongoose';
+import User from '../../models/user.model';
 import testImageAvailability from '../../utils/docker/testImageAvailability';
 import log, { formatNotification } from '../../utils/logging/logger';
-import User from '../../models/user.model';
-import type IUser from '../../types/user.types';
-import type { Document } from 'mongoose';
 import asyncHandler from '../../utils/handlers/asyncHandler';
+import type IUser from '../../types/user.types';
 
 const testImageAvailabilityController = asyncHandler(async (req: Request, res: Response) => {
   const { imageUrl, imageTag, credentialIds } = req.body;

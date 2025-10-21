@@ -1,5 +1,5 @@
-import env from './config/env';
 import mongoose from 'mongoose';
+import env from './config/env';
 import api from './api';
 import log from './utils/logging/logger';
 import { populateBasePlanIfEmpty } from './utils/populateBasePlan';

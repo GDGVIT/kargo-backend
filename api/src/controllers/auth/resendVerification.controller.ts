@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
+import env from '../../config/env';
 import User from '../../models/user.model';
 import { sendVerificationEmail } from '../../utils/auth/verification';
 import log, { formatNotification } from '../../utils/logging/logger';
-import env from '../../config/env';
 
 const resendVerification = async (req: Request, res: Response) => {
   const { email } = req.body;

@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import Application from '../../models/application.model';
 import asyncHandler from '../../utils/handlers/asyncHandler';
-import log, { formatNotification } from '../../utils/logging/logger';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
