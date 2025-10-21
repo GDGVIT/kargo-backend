@@ -1,4 +1,4 @@
-import generateDEployment from './generators/generateDeployment';
+import generateDeployment from './generators/generateDeployment';
 import generateService from './generators/generateService';
 import generateSecret from './generators/generateSecret';
 import generateImagePullSecret from './generators/generateImagePullSecret';
@@ -40,7 +40,7 @@ export default function generateK8sManifests(app: IApplication): Record<string, 
   const volumes = autoVolume ? [autoVolume] : [];
 
   // Generate all manifests
-  const deploymentYaml = generateDEployment({ ...sanitizedApp, volumes }, namespace);
+  const deploymentYaml = generateDeployment({ ...sanitizedApp, volumes }, namespace);
   const serviceYaml = generateService(sanitizedApp, namespace);
   const ingressYaml = generateIngress(sanitizedApp, namespace);
   const secretYaml = generateSecret(sanitizedApp, namespace);
