@@ -1,7 +1,5 @@
 // Authentication routes for user registration, login, OAuth, and profile management
 import { Router } from 'express';
-import asyncHandler from '../utils/handlers/asyncHandler';
-import ensureAuthenticated from '../utils/auth/ensureAuthenticated';
 
 import register from '../controllers/auth/register.controller';
 import login from '../controllers/auth/login.controller';
@@ -14,6 +12,9 @@ import getMe from '../controllers/auth/getMe.controller';
 import setUsername from '../controllers/auth/setUsername.controller';
 import verifyEmail from '../controllers/auth/verifyEmail.controller';
 import resendVerification from '../controllers/auth/resendVerification.controller';
+
+import asyncHandler from '../utils/handlers/asyncHandler';
+import ensureAuthenticated from '../utils/auth/ensureAuthenticated';
 
 const router = Router();
 

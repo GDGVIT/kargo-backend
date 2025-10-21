@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import env from '../../config/env';
 import User from '../../models/user.model';
 import Plan from '../../models/plan.model';
 import { sendVerificationEmail } from '../../utils/auth/verification';
 import log, { formatNotification } from '../../utils/logging/logger';
 import isValidUsername from '../../utils/auth/isValidUsername';
-import env from '../../config/env';
 
 const register = async (req: Request, res: Response, next: NextFunction) => {
   try {

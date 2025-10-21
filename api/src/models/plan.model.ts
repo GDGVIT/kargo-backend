@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import IPlan from '../types/plan.types';
 import { ResourceSchema } from './application.model';
+import IPlan from '../types/plan.types';
 
 const planSchema = new Schema<IPlan & Document>(
   {

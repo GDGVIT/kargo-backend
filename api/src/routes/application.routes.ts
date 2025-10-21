@@ -1,7 +1,5 @@
 // Application routes for managing user applications, deployments, logs, and metrics
 import { Router, Request, Response, NextFunction } from 'express';
-import ensureAuthenticated from '../utils/auth/ensureAuthenticated';
-import asyncHandler from '../utils/handlers/asyncHandler';
 
 import createApplication from '../controllers/application/createApplication.controller';
 import getApplications from '../controllers/application/getApplications.controller';
@@ -18,6 +16,9 @@ import getApplicationsStatus from '../controllers/application/getApplicationsSta
 import scaleDeploymentZero from '../controllers/application/scaleDeploymentZero.controller';
 import rolloutRestartDeployment from '../controllers/application/rolloutRestartDeployment.controller';
 import testImageAvailabilityController from '../controllers/application/testImageAvailability.controller';
+
+import ensureAuthenticated from '../utils/auth/ensureAuthenticated';
+import asyncHandler from '../utils/handlers/asyncHandler';
 
 const validateObjectId = (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.id;

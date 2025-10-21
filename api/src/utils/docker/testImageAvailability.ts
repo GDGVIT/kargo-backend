@@ -1,11 +1,11 @@
 import axios, { AxiosError } from 'axios';
-import type { IRegistryCredential } from '../../types/user.types';
 import log from '../logging/logger';
 import {
   getClusterArchitectures,
   validateArchitectureCompatibility,
   getImageArchitectures,
 } from './architectureValidation';
+import type { IRegistryCredential } from '../../types/user.types';
 
 interface ImageTestResult {
   available: boolean;

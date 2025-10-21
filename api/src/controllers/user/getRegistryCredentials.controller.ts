@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
+import type { Document } from 'mongoose';
 import User from '../../models/user.model';
 import log, { formatNotification } from '../../utils/logging/logger';
 import type IUser from '../../types/user.types';
 import type { IRegistryCredential } from '../../types/user.types';
-import type { Document } from 'mongoose';
 
 // Get all registry credentials for the authenticated user
 const getRegistryCredentials = async (req: Request, res: Response) => {

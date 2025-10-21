@@ -1,5 +1,5 @@
-import createGitHubJWT from '../github/createGithubJWT';
 import axios from 'axios';
+import createGitHubJWT from '../github/createGithubJWT';
 
 const INSTALLATION_ID = process.env.GITHUB_INSTALLATION_ID!;
 

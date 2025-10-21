@@ -1,8 +1,8 @@
 import { dump } from 'js-yaml';
 import stripDates from '../helpers/stripDates';
-import IApplication from '../../../types/application.types';
 import getEnvObject from '../helpers/getEnvObject';
 import toK8sResource from '../helpers/toK8sResource';
+import IApplication from '../../../types/application.types';
 
 export default function generateDeployment(sanitizedApp: any, namespace: string): string {
   return [

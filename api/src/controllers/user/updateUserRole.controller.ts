@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import { isValidObjectId, type Document } from 'mongoose';
 import User from '../../models/user.model';
-import { isValidObjectId } from 'mongoose';
 import log, { formatNotification } from '../../utils/logging/logger';
 import type IUser from '../../types/user.types';
-import type { Document } from 'mongoose';
 
 // Superadmin: promote/demote admin or user
 const updateUserRole = async (req: Request, res: Response, next: NextFunction) => {

@@ -1,5 +1,4 @@
-import type IApplication from '../../types/application.types';
-import generateDEployment from './generators/generateDeployment';
+import generateDeployment from './generators/generateDeployment';
 import generateService from './generators/generateService';
 import generateSecret from './generators/generateSecret';
 import generateImagePullSecret from './generators/generateImagePullSecret';
@@ -7,6 +6,7 @@ import generatePVC from './generators/generatePVC';
 import generatePV from './generators/generatePV';
 import stripDates from './helpers/stripDates';
 import generateIngress from './generators/generateIngress';
+import type IApplication from '../../types/application.types';
 
 export default function generateK8sManifests(app: IApplication): Record<string, string> {
   // Sanitize app object
@@ -40,7 +40,7 @@ export default function generateK8sManifests(app: IApplication): Record<string, 
   const volumes = autoVolume ? [autoVolume] : [];
 
   // Generate all manifests
-  const deploymentYaml = generateDEployment({ ...sanitizedApp, volumes }, namespace);
+  const deploymentYaml = generateDeployment({ ...sanitizedApp, volumes }, namespace);
   const serviceYaml = generateService(sanitizedApp, namespace);
   const ingressYaml = generateIngress(sanitizedApp, namespace);
   const secretYaml = generateSecret(sanitizedApp, namespace);

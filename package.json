@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "cd api && npm run dev",
+    "build": "cd api && npm run build",
+    "start": "cd api && npm start",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -20,8 +22,7 @@
     "url": "https://github.com/GDGVIT/kargo-backend/issues"
   },
   "homepage": "https://github.com/GDGVIT/kargo-backend#readme",
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "prettier": "^3.6.2",
     "nodemon": "^3.1.10",

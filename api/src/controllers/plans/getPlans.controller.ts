@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import type { Document } from 'mongoose';
 import Plan from '../../models/plan.model';
 import log, { formatNotification } from '../../utils/logging/logger';
 import type IPlan from '../../types/plan.types';
-import type { Document } from 'mongoose';
 
 // Get all plans
 const getPlans = async (_req: Request, res: Response, next: NextFunction) => {
